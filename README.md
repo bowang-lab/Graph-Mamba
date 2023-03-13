@@ -37,7 +37,7 @@ conda clean --all
 conda activate exphormer
 
 # Running Exphormer for LRGB Datasets
-python main.py --cfg configs/Exphormer_LRGB/peptides-struct.yaml  wandb.use False
+python main.py --cfg configs/Exphormer_LRGB/peptides-struct-EX.yaml  wandb.use False
 
 # Running Exphormer for Cifar10
 python main.py --cfg configs/Exphormer/cifar10.yaml  wandb.use False
