@@ -4,19 +4,19 @@ import torch
 import logging
 
 import graphgps  # noqa, register custom modules
-from graphgps.agg_runs import agg_runs
 from graphgps.optimizer.extra_optimizers import ExtendedSchedulerConfig
 
 from torch_geometric.graphgym.cmd_args import parse_args
 from torch_geometric.graphgym.config import (cfg, dump_cfg,
-                                             set_cfg, load_cfg,
+                                             set_agg_dir, set_cfg, load_cfg,
                                              makedirs_rm_exist)
 from torch_geometric.graphgym.loader import create_loader
 from torch_geometric.graphgym.logger import set_printing
 from torch_geometric.graphgym.optim import create_optimizer, \
     create_scheduler, OptimizerConfig
 from torch_geometric.graphgym.model_builder import create_model
-from torch_geometric.graphgym.train import GraphGymDataModule, train
+from torch_geometric.graphgym.train import train
+from torch_geometric.graphgym.utils.agg_runs import agg_runs
 from torch_geometric.graphgym.utils.comp_budget import params_count
 from torch_geometric.graphgym.utils.device import auto_select_device
 from torch_geometric.graphgym.register import train_dict
@@ -25,10 +25,6 @@ from torch_geometric import seed_everything
 from graphgps.finetuning import load_pretrained_model_cfg, \
     init_model_from_pretrained
 from graphgps.logger import create_logger
-
-
-torch.backends.cuda.matmul.allow_tf32 = True  # Default False in PyTorch 1.12+
-torch.backends.cudnn.allow_tf32 = True  # Default True
 
 
 def new_optimizer_config(cfg):
@@ -141,11 +137,24 @@ if __name__ == '__main__':
         # Set machine learning pipeline
         loaders = create_loader()
         loggers = create_logger()
+        # custom_train expects three loggers for 'train', 'valid' and 'test'.
+        # GraphGym code creates one logger/loader for each of the 'train_mask' etc.
+        # attributes in the dataset. As a work around it, we create one logger for each
+        # of the types.
+        # loaders are a const, so it is ok to just duplicate the loader. 
+        if cfg.dataset.name == 'ogbn-arxiv' or cfg.dataset.name == 'ogbn-proteins':
+            loggers_2 = create_logger()
+            loggers_3 = create_logger()
+            loggers_2[0].name = "val"
+            loggers_3[0].name = "test"
+            loggers.extend(loggers_2)
+            loggers.extend(loggers_3)
+            loaders = loaders*3
         model = create_model()
         if cfg.pretrained.dir:
             model = init_model_from_pretrained(
                 model, cfg.pretrained.dir, cfg.pretrained.freeze_main,
-                cfg.pretrained.reset_prediction_head, seed=cfg.seed
+                cfg.pretrained.reset_prediction_head
             )
         optimizer = create_optimizer(model.parameters(),
                                      new_optimizer_config(cfg))
@@ -160,8 +169,7 @@ if __name__ == '__main__':
             if cfg.wandb.use:
                 logging.warning("[W] WandB logging is not supported with the "
                                 "default train.mode, set it to `custom`")
-            datamodule = GraphGymDataModule()
-            train(model, datamodule, logger=True)
+            train(loggers, loaders, model, optimizer, scheduler)
         else:
             train_dict[cfg.train.mode](loggers, loaders, model, optimizer,
                                        scheduler)
