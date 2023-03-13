@@ -5,6 +5,7 @@ from torch_geometric.graphgym.models.gnn import GNNPreMP
 from torch_geometric.graphgym.models.layer import (new_layer_config,
                                                    BatchNorm1dNode)
 from torch_geometric.graphgym.register import register_network
+from graphgps.encoder.ER_edge_encoder import EREdgeEncoder
 
 from graphgps.layer.gps_layer import GPSLayer
 
@@ -28,22 +29,27 @@ class FeatureEncoder(torch.nn.Module):
                 self.node_encoder_bn = BatchNorm1dNode(
                     new_layer_config(cfg.gnn.dim_inner, -1, -1, has_act=False,
                                      has_bias=False, cfg=cfg))
-            # Update dim_in to reflect the new dimension of the node features
+            # Update dim_in to reflect the new dimension fo the node features
             self.dim_in = cfg.gnn.dim_inner
         if cfg.dataset.edge_encoder:
-            # Hard-limit max edge dim for PNA.
-            if 'PNA' in cfg.gt.layer_type:
-                cfg.gnn.dim_edge = min(128, cfg.gnn.dim_inner)
+            # Hard-set edge dim for PNA.
+            cfg.gnn.dim_edge = 16 if 'PNA' in cfg.gt.layer_type else cfg.gnn.dim_inner
+            if cfg.dataset.edge_encoder_name == 'ER':
+                self.edge_encoder = EREdgeEncoder(cfg.gnn.dim_edge)
+            elif cfg.dataset.edge_encoder_name.endswith('+ER'):
+                EdgeEncoder = register.edge_encoder_dict[
+                    cfg.dataset.edge_encoder_name[:-3]]
+                self.edge_encoder = EdgeEncoder(cfg.gnn.dim_edge - cfg.posenc_ERE.dim_pe)
+                self.edge_encoder_er = EREdgeEncoder(cfg.posenc_ERE.dim_pe, use_edge_attr=True)
             else:
-                cfg.gnn.dim_edge = cfg.gnn.dim_inner
-            # Encode integer edge features via nn.Embeddings
-            EdgeEncoder = register.edge_encoder_dict[
-                cfg.dataset.edge_encoder_name]
-            self.edge_encoder = EdgeEncoder(cfg.gnn.dim_edge)
+                EdgeEncoder = register.edge_encoder_dict[
+                    cfg.dataset.edge_encoder_name]
+                self.edge_encoder = EdgeEncoder(cfg.gnn.dim_edge)
+
             if cfg.dataset.edge_encoder_bn:
                 self.edge_encoder_bn = BatchNorm1dNode(
                     new_layer_config(cfg.gnn.dim_edge, -1, -1, has_act=False,
-                                     has_bias=False, cfg=cfg))
+                                    has_bias=False, cfg=cfg))
 
     def forward(self, batch):
         for module in self.children():
@@ -53,10 +59,7 @@ class FeatureEncoder(torch.nn.Module):
 
 @register_network('GPSModel')
 class GPSModel(torch.nn.Module):
-    """General-Powerful-Scalable graph transformer.
-    https://arxiv.org/abs/2205.12454
-    Rampasek, L., Galkin, M., Dwivedi, V. P., Luu, A. T., Wolf, G., & Beaini, D.
-    Recipe for a general, powerful, scalable graph transformer. (NeurIPS 2022)
+    """Multi-scale graph x-former.
     """
 
     def __init__(self, dim_in, dim_out):
@@ -69,12 +72,8 @@ class GPSModel(torch.nn.Module):
                 dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
             dim_in = cfg.gnn.dim_inner
 
-        if not cfg.gt.dim_hidden == cfg.gnn.dim_inner == dim_in:
-            raise ValueError(
-                f"The inner and hidden dims must match: "
-                f"embed_dim={cfg.gt.dim_hidden} dim_inner={cfg.gnn.dim_inner} "
-                f"dim_in={dim_in}"
-            )
+        assert cfg.gt.dim_hidden == cfg.gnn.dim_inner == dim_in, \
+            "The inner and hidden dims must match."
 
         try:
             local_gnn_type, global_model_type = cfg.gt.layer_type.split('+')
@@ -87,7 +86,6 @@ class GPSModel(torch.nn.Module):
                 local_gnn_type=local_gnn_type,
                 global_model_type=global_model_type,
                 num_heads=cfg.gt.n_heads,
-                act=cfg.gnn.act,
                 pna_degrees=cfg.gt.pna_degrees,
                 equivstable_pe=cfg.posenc_EquivStableLapPE.enable,
                 dropout=cfg.gt.dropout,
@@ -95,7 +93,6 @@ class GPSModel(torch.nn.Module):
                 layer_norm=cfg.gt.layer_norm,
                 batch_norm=cfg.gt.batch_norm,
                 bigbird_cfg=cfg.gt.bigbird,
-                log_attn_weights=cfg.train.mode == 'log-attn-weights',
             ))
         self.layers = torch.nn.Sequential(*layers)
 

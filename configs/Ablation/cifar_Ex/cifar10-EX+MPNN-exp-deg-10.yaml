@@ -1,0 +1,67 @@
+out_dir: results
+metric_best: accuracy
+wandb:
+  use: True
+  project: CIFAR10
+  entity: expand-gnns
+dataset:
+  format: PyG-GNNBenchmarkDataset
+  name: CIFAR10
+  task: graph
+  task_type: classification
+  transductive: False
+  node_encoder: True
+  node_encoder_name: LinearNode+EquivStableLapPE
+  node_encoder_bn: False
+  edge_encoder: True
+  edge_encoder_name: LinearEdge
+  edge_encoder_bn: False
+prep:
+  exp: True
+  exp_deg: 10
+  add_edge_index: True # Set True if you want to add real edges beside expander edges
+  num_virt_node: 1 # Set True if you want to add global node connections beside expander edges
+posenc_EquivStableLapPE:
+  enable: True
+  eigen:
+    laplacian_norm: none
+    eigvec_norm: L2
+    max_freqs: 8
+  raw_norm_type: none
+train:
+  mode: custom
+  batch_size: 16
+  eval_period: 1
+  ckpt_period: 100
+model:
+  type: MultiModel
+  loss_fun: cross_entropy
+  edge_decoding: dot
+  graph_pooling: mean
+gt:
+  layer_type: CustomGatedGCN+Exphormer # some other options: Exphormer, GINE+Exphormer, GINE, GINE__exp
+  layers: 5
+  n_heads: 4
+  dim_hidden: 40  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dropout: 0.1
+  attn_dropout: 0.1
+  layer_norm: False
+  batch_norm: True
+gnn:
+  head: default
+  layers_pre_mp: 0
+  layers_post_mp: 2
+  dim_inner: 40  # `gt.dim_hidden` must match `gnn.dim_inner`
+  batchnorm: False
+  act: relu
+  dropout: 0.1
+  agg: mean
+  normalize_adj: False
+optim:
+  clip_grad_norm: True
+  optimizer: adamW
+  weight_decay: 1e-5
+  base_lr: 0.001
+  max_epoch: 100
+  scheduler: cosine_with_warmup
+  num_warmup_epochs: 5

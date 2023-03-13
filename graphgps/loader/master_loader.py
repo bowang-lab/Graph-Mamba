@@ -1,19 +1,22 @@
 import logging
 import os.path as osp
 import time
+import math
 from functools import partial
 
 import numpy as np
 import torch
 import torch_geometric.transforms as T
 from numpy.random import default_rng
+from ogb.nodeproppred import PygNodePropPredDataset
 from ogb.graphproppred import PygGraphPropPredDataset
-from torch_geometric.datasets import (Actor, GNNBenchmarkDataset, Planetoid,
-                                      TUDataset, WebKB, WikipediaNetwork, ZINC)
+from torch_geometric.datasets import (Amazon, Coauthor, GNNBenchmarkDataset, TUDataset,
+                                      WikipediaNetwork, ZINC)
 from torch_geometric.graphgym.config import cfg
 from torch_geometric.graphgym.loader import load_pyg, load_ogb, set_dataset_attr
 from torch_geometric.graphgym.register import register_loader
 
+from graphgps.loader.planetoid import Planetoid
 from graphgps.loader.dataset.aqsol_molecules import AQSOL
 from graphgps.loader.dataset.coco_superpixels import COCOSuperpixels
 from graphgps.loader.dataset.malnet_tiny import MalNetTiny
@@ -21,16 +24,21 @@ from graphgps.loader.dataset.voc_superpixels import VOCSuperpixels
 from graphgps.loader.split_generator import (prepare_splits,
                                              set_dataset_splits)
 from graphgps.transform.posenc_stats import compute_posenc_stats
-from graphgps.transform.task_preprocessing import task_specific_preprocessing
 from graphgps.transform.transforms import (pre_transform_in_memory,
+                                           generate_splits, # not the same as split_generator above.
                                            typecast_x, concat_x_and_pos,
-                                           clip_graphs_to_size)
+                                           clip_graphs_to_size, move_node_feat_to_x)
+from graphgps.transform.expander_edges import generate_random_expander
+from graphgps.transform.dist_transforms import (add_dist_features, add_reverse_edges,
+                                                 add_self_loops, effective_resistances, 
+                                                 effective_resistance_embedding,
+                                                 effective_resistances_from_embedding)
 
 
 def log_loaded_dataset(dataset, format, name):
     logging.info(f"[*] Loaded dataset '{name}' from '{format}':")
     logging.info(f"  {dataset.data}")
-    logging.info(f"  undirected: {dataset[0].is_undirected()}")
+    # logging.info(f"  undirected: {dataset[0].is_undirected()}")
     logging.info(f"  num graphs: {len(dataset)}")
 
     total_num_nodes = 0
@@ -101,37 +109,43 @@ def load_dataset_master(format, name, dataset_dir):
         pyg_dataset_id = format.split('-', 1)[1]
         dataset_dir = osp.join(dataset_dir, pyg_dataset_id)
 
-        if pyg_dataset_id == 'Actor':
-            if name != 'none':
-                raise ValueError(f"Actor class provides only one dataset.")
-            dataset = Actor(dataset_dir)
-
-        elif pyg_dataset_id == 'GNNBenchmarkDataset':
+        if pyg_dataset_id == 'GNNBenchmarkDataset':
             dataset = preformat_GNNBenchmarkDataset(dataset_dir, name)
 
         elif pyg_dataset_id == 'MalNetTiny':
             dataset = preformat_MalNetTiny(dataset_dir, feature_set=name)
 
+        elif pyg_dataset_id == 'Amazon':
+            dataset = Amazon(dataset_dir, name)
+            if name == "photo" or name == "computers":
+                pre_transform_in_memory(dataset, partial(generate_splits, g_split = cfg.dataset.split[0]))
+                pre_transform_in_memory(dataset, partial(add_reverse_edges))
+                if cfg.prep.add_self_loops:
+                  pre_transform_in_memory(dataset, partial(add_self_loops))
+
+        elif pyg_dataset_id == 'Coauthor':
+            dataset = Coauthor(dataset_dir, name)
+            if name == "physics" or name == "cs":
+                pre_transform_in_memory(dataset, partial(generate_splits, g_split = cfg.dataset.split[0]))
+                pre_transform_in_memory(dataset, partial(add_reverse_edges))
+                if cfg.prep.add_self_loops:
+                  pre_transform_in_memory(dataset, partial(add_self_loops))
+
         elif pyg_dataset_id == 'Planetoid':
-            dataset = Planetoid(dataset_dir, name)
+            # dataset = Planetoid(dataset_dir, name)
+            dataset = Planetoid(dataset_dir, name, split='random', train_percent= cfg.prep.train_percent)
+            # dataset = Planetoid(dataset_dir, name, split='random', num_train_per_class = 4725, num_val = 1575, num_test = 1575)
+            # Citeseer
+            # dataset = Planetoid(dataset_dir, name, split='random', num_train_per_class = 1996, num_val = 665, num_test = 666)
+            if name == "PubMed":
+                pre_transform_in_memory(dataset, partial(typecast_x, type_str='float'))
+            if cfg.prep.add_reverse_edges == True:
+              pre_transform_in_memory(dataset, partial(add_reverse_edges))
+            if cfg.prep.add_self_loops == True:
+              pre_transform_in_memory(dataset, partial(add_self_loops))
 
         elif pyg_dataset_id == 'TUDataset':
             dataset = preformat_TUDataset(dataset_dir, name)
-
-        elif pyg_dataset_id == 'WebKB':
-            dataset = WebKB(dataset_dir, name)
-
-        elif pyg_dataset_id == 'WikipediaNetwork':
-            if name == 'crocodile':
-                raise NotImplementedError(f"crocodile not implemented")
-            dataset = WikipediaNetwork(dataset_dir, name,
-                                       geom_gcn_preprocess=True)
-
-        elif pyg_dataset_id == 'ZINC':
-            dataset = preformat_ZINC(dataset_dir, name)
-            
-        elif pyg_dataset_id == 'AQSOL':
-            dataset = preformat_AQSOL(dataset_dir, name)
 
         elif pyg_dataset_id == 'VOCSuperpixels':
             dataset = preformat_VOCSuperpixels(dataset_dir, name,
@@ -140,6 +154,18 @@ def load_dataset_master(format, name, dataset_dir):
         elif pyg_dataset_id == 'COCOSuperpixels':
             dataset = preformat_COCOSuperpixels(dataset_dir, name,
                                                 cfg.dataset.slic_compactness)
+
+
+        elif pyg_dataset_id == 'WikipediaNetwork':
+            if name == 'crocodile':
+                raise NotImplementedError(f"crocodile not implemented yet")
+            dataset = WikipediaNetwork(dataset_dir, name)
+
+        elif pyg_dataset_id == 'ZINC':
+            dataset = preformat_ZINC(dataset_dir, name)
+            
+        elif pyg_dataset_id == 'AQSOL':
+            dataset = preformat_AQSOL(dataset_dir, name)
 
         else:
             raise ValueError(f"Unexpected PyG Dataset identifier: {format}")
@@ -155,6 +181,8 @@ def load_dataset_master(format, name, dataset_dir):
         elif name.startswith('PCQM4Mv2-'):
             subset = name.split('-', 1)[1]
             dataset = preformat_OGB_PCQM4Mv2(dataset_dir, subset)
+        elif name.startswith('ogbn'):
+            dataset = preformat_ogbn(dataset_dir, name)
 
         elif name.startswith('peptides-'):
             dataset = preformat_Peptides(dataset_dir, name)
@@ -179,15 +207,12 @@ def load_dataset_master(format, name, dataset_dir):
             raise ValueError(f"Unsupported OGB(-derived) dataset: {name}")
     else:
         raise ValueError(f"Unknown data format: {format}")
-
-    pre_transform_in_memory(dataset, partial(task_specific_preprocessing, cfg=cfg))
-
     log_loaded_dataset(dataset, format, name)
 
     # Precompute necessary statistics for positional encodings.
     pe_enabled_list = []
     for key, pecfg in cfg.items():
-        if key.startswith('posenc_') and pecfg.enable:
+        if key.startswith('posenc_') and pecfg.enable and (not key.startswith('posenc_ER')):
             pe_name = key.split('_', 1)[1]
             pe_enabled_list.append(pe_name)
             if hasattr(pecfg, 'kernel'):
@@ -215,6 +240,87 @@ def load_dataset_master(format, name, dataset_dir):
                   + f'{elapsed:.2f}'[-3:]
         logging.info(f"Done! Took {timestr}")
 
+    # Other preprocessings:
+    # adding expander edges:
+    if cfg.prep.exp:
+        for j in range(cfg.prep.exp_count):
+            start = time.perf_counter()
+            logging.info(f"Adding expander edges (round {j}) ...")
+            pre_transform_in_memory(dataset,
+                                    partial(generate_random_expander,
+                                            degree = cfg.prep.exp_deg,
+                                            rng = None,
+                                            max_num_iters = cfg.prep.exp_max_num_iters,
+                                            exp_index = j),
+                                    show_progress=True
+                                    )
+            elapsed = time.perf_counter() - start
+            timestr = time.strftime('%H:%M:%S', time.gmtime(elapsed)) \
+                      + f'{elapsed:.2f}'[-3:]
+            logging.info(f"Done! Took {timestr}")
+
+
+    # adding shortest path features
+    if cfg.prep.dist_enable:
+        start = time.perf_counter()
+        logging.info(f"Precalculating node distances and shortest paths ...")
+        is_undirected = dataset[0].is_undirected()
+        Max_N = max([data.num_nodes for data in dataset])
+        pre_transform_in_memory(dataset,
+                                partial(add_dist_features,
+                                        max_n = Max_N,
+                                        is_undirected = is_undirected,
+                                        cutoff = cfg.prep.dist_cutoff),
+                                show_progress=True
+                                )
+        elapsed = time.perf_counter() - start
+        timestr = time.strftime('%H:%M:%S', time.gmtime(elapsed)) \
+                  + f'{elapsed:.2f}'[-3:]
+        logging.info(f"Done! Took {timestr}")
+
+
+    # adding effective resistance features
+    if cfg.posenc_ERN.enable or cfg.posenc_ERE.enable:
+        start = time.perf_counter()
+        logging.info(f"Precalculating effective resistance for graphs ...")
+        
+        MaxK = max(
+            [
+                min(
+                math.ceil(data.num_nodes//2), 
+                math.ceil(8 * math.log(data.num_edges) / (cfg.posenc_ERN.accuracy**2))
+                ) 
+                for data in dataset
+            ]
+            )
+
+        cfg.posenc_ERN.er_dim = MaxK
+        logging.info(f"Choosing ER pos enc dim = {MaxK}")
+
+        pre_transform_in_memory(dataset,
+                                partial(effective_resistance_embedding,
+                                        MaxK = MaxK,
+                                        accuracy = cfg.posenc_ERN.accuracy,
+                                        which_method = 0),
+                                show_progress=True
+                                )
+
+        pre_transform_in_memory(dataset,
+                        partial(effective_resistances_from_embedding,
+                        normalize_per_node = False),
+                        show_progress=True
+                        )
+
+        elapsed = time.perf_counter() - start
+        timestr = time.strftime('%H:%M:%S', time.gmtime(elapsed)) \
+                  + f'{elapsed:.2f}'[-3:]
+        logging.info(f"Done! Took {timestr}")
+
+
+    # This could not be done earlier because the training wants 'train_mask' etc.
+    # Now after using gnn.head: inductive_node this is ok.
+    if name == 'ogbn-arxiv' or name == 'ogbn-proteins':
+      return dataset
     # Set standard dataset train/val/test splits
     if hasattr(dataset, 'split_idxs'):
         set_dataset_splits(dataset, dataset.split_idxs)
@@ -224,11 +330,9 @@ def load_dataset_master(format, name, dataset_dir):
     prepare_splits(dataset)
 
     # Precompute in-degree histogram if needed for PNAConv.
-    if cfg.gt.layer_type.startswith('PNA') and len(cfg.gt.pna_degrees) == 0:
+    if cfg.gt.layer_type.startswith('PNAConv') and len(cfg.gt.pna_degrees) == 0:
         cfg.gt.pna_degrees = compute_indegree_histogram(
             dataset[dataset.data['train_graph_index']])
-        # print(f"Indegrees: {cfg.gt.pna_degrees}")
-        # print(f"Avg:{np.mean(cfg.gt.pna_degrees)}")
 
     return dataset
 
@@ -264,23 +368,19 @@ def preformat_GNNBenchmarkDataset(dataset_dir, name):
     Returns:
         PyG dataset object
     """
+    tf_list = []
     if name in ['MNIST', 'CIFAR10']:
         tf_list = [concat_x_and_pos]  # concat pixel value and pos. coordinate
         tf_list.append(partial(typecast_x, type_str='float'))
-    elif name in ['PATTERN', 'CLUSTER', 'CSL']:
-        tf_list = []
     else:
-        raise ValueError(f"Loading dataset '{name}' from "
-                         f"GNNBenchmarkDataset is not supported.")
+        ValueError(f"Loading dataset '{name}' from "
+                   f"GNNBenchmarkDataset is not supported.")
 
-    if name in ['MNIST', 'CIFAR10', 'PATTERN', 'CLUSTER']:
-        dataset = join_dataset_splits(
-            [GNNBenchmarkDataset(root=dataset_dir, name=name, split=split)
-            for split in ['train', 'val', 'test']]
-        )
-        pre_transform_in_memory(dataset, T.Compose(tf_list))
-    elif name == 'CSL':
-        dataset = GNNBenchmarkDataset(root=dataset_dir, name=name)
+    dataset = join_dataset_splits(
+        [GNNBenchmarkDataset(root=dataset_dir, name=name, split=split)
+         for split in ['train', 'val', 'test']]
+    )
+    pre_transform_in_memory(dataset, T.Compose(tf_list))
 
     return dataset
 
@@ -412,44 +512,17 @@ def preformat_OGB_PCQM4Mv2(dataset_dir, name):
                       valid_idx,  # Subset of original 'train' as validation set.
                       split_idx['valid']  # The original 'valid' as testing set.
                       ]
-
     elif name == 'subset':
         # Further subset the training set for faster debugging.
         subset_ratio = 0.1
         subtrain_idx = train_idx[:int(subset_ratio * len(train_idx))]
         subvalid_idx = valid_idx[:50000]
         subtest_idx = split_idx['valid']  # The original 'valid' as testing set.
-
         dataset = dataset[torch.cat([subtrain_idx, subvalid_idx, subtest_idx])]
-        data_list = [data for data in dataset]
-        dataset._indices = None
-        dataset._data_list = data_list
-        dataset.data, dataset.slices = dataset.collate(data_list)
         n1, n2, n3 = len(subtrain_idx), len(subvalid_idx), len(subtest_idx)
         split_idxs = [list(range(n1)),
                       list(range(n1, n1 + n2)),
                       list(range(n1 + n2, n1 + n2 + n3))]
-
-    elif name == 'inference':
-        split_idxs = [split_idx['valid'],  # The original labeled 'valid' set.
-                      split_idx['test-dev'],  # Held-out unlabeled test dev.
-                      split_idx['test-challenge']  # Held-out challenge test set.
-                      ]
-
-        dataset = dataset[torch.cat(split_idxs)]
-        data_list = [data for data in dataset]
-        dataset._indices = None
-        dataset._data_list = data_list
-        dataset.data, dataset.slices = dataset.collate(data_list)
-        n1, n2, n3 = len(split_idxs[0]), len(split_idxs[1]), len(split_idxs[2])
-        split_idxs = [list(range(n1)),
-                      list(range(n1, n1 + n2)),
-                      list(range(n1 + n2, n1 + n2 + n3))]
-        # Check prediction targets.
-        assert(all([not torch.isnan(dataset[i].y)[0] for i in split_idxs[0]]))
-        assert(all([torch.isnan(dataset[i].y)[0] for i in split_idxs[1]]))
-        assert(all([torch.isnan(dataset[i].y)[0] for i in split_idxs[2]]))
-
     else:
         raise ValueError(f'Unexpected OGB PCQM4Mv2 subset choice: {name}')
     dataset.split_idxs = split_idxs
@@ -533,16 +606,45 @@ def preformat_TUDataset(dataset_dir, name):
     Returns:
         PyG dataset object
     """
-    if name in ['DD', 'NCI1', 'ENZYMES', 'PROTEINS', 'TRIANGLES']:
+    if name in ['DD', 'NCI1', 'ENZYMES', 'PROTEINS']:
         func = None
     elif name.startswith('IMDB-') or name == "COLLAB":
         func = T.Constant()
     else:
-        raise ValueError(f"Loading dataset '{name}' from "
-                         f"TUDataset is not supported.")
+        ValueError(f"Loading dataset '{name}' from TUDataset is not supported.")
     dataset = TUDataset(dataset_dir, name, pre_transform=func)
     return dataset
 
+def preformat_ogbn(dataset_dir, name):
+  if name == 'ogbn-arxiv' or name == 'ogbn-proteins':
+    dataset = PygNodePropPredDataset(name=name)
+    if name == 'ogbn-arxiv':
+      pre_transform_in_memory(dataset, partial(add_reverse_edges))
+      if cfg.prep.add_self_loops:
+        pre_transform_in_memory(dataset, partial(add_self_loops))
+    if name == 'ogbn-proteins':
+      pre_transform_in_memory(dataset, partial(move_node_feat_to_x))
+      pre_transform_in_memory(dataset, partial(typecast_x, type_str='float'))
+    split_dict = dataset.get_idx_split()
+    split_dict['val'] = split_dict.pop('valid')
+    dataset.split_idx = split_dict
+    return dataset
+
+
+     #  We do not need to store  these separately.
+     # storing separatelymight simplify the duplicated logger code in main.py
+     # s_dict = dataset.get_idx_split()
+     # dataset.split_idxs = [s_dict[s] for s in ['train', 'valid', 'test']]
+     # convert the adjacency list to an edge_index list.
+     # data = dataset[0]
+     # coo = data.adj_t.coo()
+     # data is only a deep copy.  Need to write to the dataset object itself.
+     # dataset[0].edge_index = torch.stack(coo[:2])
+     # del dataset[0]['adj_t'] # remove the adjacency list after the edge_index is created.
+
+     # return dataset
+  else:
+     ValueError(f"Unknown ogbn dataset '{name}'.")
 
 def preformat_ZINC(dataset_dir, name):
     """Load and preformat ZINC datasets.

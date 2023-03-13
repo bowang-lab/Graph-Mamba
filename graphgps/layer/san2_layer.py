@@ -40,7 +40,7 @@ class MultiHeadAttention2Layer(nn.Module):
     https://github.com/DevinKreuzer/SAN/blob/main/layers/graph_transformer_layer.py
     """
 
-    def __init__(self, gamma, in_dim, out_dim, num_heads, full_graph,
+    def __init__(self, gamma, in_dim, out_dim, num_heads, secondary_edges,
                  fake_edge_emb, use_bias):
         super().__init__()
 
@@ -48,13 +48,13 @@ class MultiHeadAttention2Layer(nn.Module):
         self.num_heads = num_heads
         self.gamma = nn.Parameter(torch.tensor(0.5, dtype=float),
                                   requires_grad=True)
-        self.full_graph = full_graph
+        self.secondary_edges = secondary_edges
 
         self.Q = nn.Linear(in_dim, out_dim * num_heads, bias=use_bias)
         self.K = nn.Linear(in_dim, out_dim * num_heads, bias=use_bias)
         self.E = nn.Linear(in_dim, out_dim * num_heads, bias=use_bias)
 
-        if self.full_graph:
+        if self.secondary_edges:
             self.Q_2 = nn.Linear(in_dim, out_dim * num_heads, bias=use_bias)
             self.K_2 = nn.Linear(in_dim, out_dim * num_heads, bias=use_bias)
             self.E_2 = nn.Linear(in_dim, out_dim * num_heads, bias=use_bias)
@@ -70,8 +70,12 @@ class MultiHeadAttention2Layer(nn.Module):
         # Scale scores by sqrt(d)
         score = score / np.sqrt(self.out_dim)
 
-        if self.full_graph:
-            fake_edge_index = negate_edge_index(batch.edge_index, batch.batch)
+        if self.secondary_edges is not None:
+            if self.secondary_edges == 'full_graph':
+                fake_edge_index = negate_edge_index(batch.edge_index, batch.batch)
+            else:
+                fake_edge_index = getattr(batch, self.secondary_edges)
+
             src_2 = batch.K_2h[fake_edge_index[0]]  # (num fake edges) x num_heads x out_dim
             dest_2 = batch.Q_2h[fake_edge_index[1]]  # (num fake edges) x num_heads x out_dim
             score_2 = torch.mul(src_2, dest_2)
@@ -82,11 +86,11 @@ class MultiHeadAttention2Layer(nn.Module):
         # Use available edge features to modify the scores for edges
         score = torch.mul(score, batch.E)  # (num real edges) x num_heads x out_dim
 
-        if self.full_graph:
+        if self.secondary_edges is not None:
             # E_2 is 1 x num_heads x out_dim and will be broadcast over dim=0
             score_2 = torch.mul(score_2, batch.E_2)
 
-        if self.full_graph:
+        if self.secondary_edges is not None:
             # softmax and scaling by gamma
             score = pyg_softmax(score.sum(-1, keepdim=True), batch.edge_index[1])  # (num real edges) x num_heads x 1
             score_2 = pyg_softmax(score_2.sum(-1, keepdim=True), fake_edge_index[1])  # (num fake edges) x num_heads x 1
@@ -101,7 +105,7 @@ class MultiHeadAttention2Layer(nn.Module):
         batch.wV = torch.zeros_like(batch.V_h)  # (num nodes in batch) x num_heads x out_dim
         scatter(msg, batch.edge_index[1], dim=0, out=batch.wV, reduce='add')
 
-        if self.full_graph:
+        if self.secondary_edges is not None:
             # Attention via fictional edges
             msg_2 = batch.V_h[fake_edge_index[0]] * score_2
             # Add messages along fake edges to destination nodes
@@ -113,7 +117,7 @@ class MultiHeadAttention2Layer(nn.Module):
         K_h = self.K(batch.x)
         E = self.E(batch.edge_attr)
 
-        if self.full_graph:
+        if self.secondary_edges is not None:
             Q_2h = self.Q_2(batch.x)
             K_2h = self.K_2(batch.x)
             # One embedding used for all fake edges; shape: 1 x emb_dim
@@ -128,7 +132,7 @@ class MultiHeadAttention2Layer(nn.Module):
         batch.K_h = K_h.view(-1, self.num_heads, self.out_dim)
         batch.E = E.view(-1, self.num_heads, self.out_dim)
 
-        if self.full_graph:
+        if self.secondary_edges is not None:
             batch.Q_2h = Q_2h.view(-1, self.num_heads, self.out_dim)
             batch.K_2h = K_2h.view(-1, self.num_heads, self.out_dim)
             batch.E_2 = E_2.view(-1, self.num_heads, self.out_dim)
@@ -149,7 +153,7 @@ class SAN2Layer(nn.Module):
     https://github.com/DevinKreuzer/SAN/blob/main/layers/graph_transformer_layer.py
     """
 
-    def __init__(self, gamma, in_dim, out_dim, num_heads, full_graph,
+    def __init__(self, gamma, in_dim, out_dim, num_heads, secondary_edges,
                  fake_edge_emb, dropout=0.0,
                  layer_norm=False, batch_norm=True,
                  residual=True, use_bias=False):
@@ -166,7 +170,7 @@ class SAN2Layer(nn.Module):
                                                   in_dim=in_dim,
                                                   out_dim=out_dim // num_heads,
                                                   num_heads=num_heads,
-                                                  full_graph=full_graph,
+                                                  secondary_edges=secondary_edges,
                                                   fake_edge_emb=fake_edge_emb,
                                                   use_bias=use_bias)
 

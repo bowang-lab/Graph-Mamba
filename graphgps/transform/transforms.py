@@ -36,6 +36,22 @@ def pre_transform_in_memory(dataset, transform_func, show_progress=False):
     dataset.data, dataset.slices = dataset.collate(data_list)
 
 
+def generate_splits(data, g_split):
+  n_nodes = len(data.x)
+  train_mask = torch.zeros(n_nodes, dtype=bool)
+  valid_mask = torch.zeros(n_nodes, dtype=bool)
+  test_mask = torch.zeros(n_nodes, dtype=bool)
+  idx = torch.randperm(n_nodes)
+  val_num = test_num = int(n_nodes * (1 - g_split) / 2)
+  train_mask[idx[val_num + test_num:]] = True
+  valid_mask[idx[:val_num]] = True
+  test_mask[idx[val_num:val_num + test_num]] = True
+  data.train_mask = train_mask
+  data.val_mask = valid_mask
+  data.test_mask = test_mask
+  return data
+
+
 def typecast_x(data, type_str):
     if type_str == 'float':
         data.x = data.x.float()
@@ -50,6 +66,10 @@ def concat_x_and_pos(data):
     data.x = torch.cat((data.x, data.pos), 1)
     return data
 
+def move_node_feat_to_x(data):
+    """For ogbn-proteins, move the attribute node_species to attribute x."""
+    data.x = data.node_species
+    return data
 
 def clip_graphs_to_size(data, size_limit=5000):
     if hasattr(data, 'num_nodes'):

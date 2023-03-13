@@ -12,9 +12,6 @@ def overwrite_defaults_cfg(cfg):
     those that exist in core GraphGym.
     """
 
-    # Training (and validation) pipeline mode
-    cfg.train.mode = 'custom'  # 'standard' uses PyTorch-Lightning since PyG 2.1
-
     # Overwrite default dataset name
     cfg.dataset.name = 'none'
 

@@ -59,7 +59,7 @@ def load_pretrained_model_cfg(cfg):
     set_new_cfg_allowed(pretrained_cfg, True)
     pretrained_cfg.merge_from_file(pretrained_cfg_fname)
 
-    assert cfg.model.type in ["GPSModel", "Graphormer"], \
+    assert cfg.model.type == 'GPSModel', \
         "Fine-tuning regime is untested for other model types."
     compare_cfg(cfg, pretrained_cfg, 'model.type', strict=True)
     compare_cfg(cfg, pretrained_cfg, 'model.graph_pooling')
@@ -82,7 +82,7 @@ def load_pretrained_model_cfg(cfg):
     # Copy over GNN cfg but not those for the prediction head
     compare_cfg(cfg, pretrained_cfg, 'gnn.head')
     compare_cfg(cfg, pretrained_cfg, 'gnn.layers_post_mp')
-    compare_cfg(cfg, pretrained_cfg, 'gnn.act', strict=True)
+    compare_cfg(cfg, pretrained_cfg, 'gnn.act')
     compare_cfg(cfg, pretrained_cfg, 'gnn.dropout')
     head = cfg.gnn.head
     post_mp = cfg.gnn.layers_post_mp
@@ -97,7 +97,7 @@ def load_pretrained_model_cfg(cfg):
 
 
 def init_model_from_pretrained(model, pretrained_dir,
-                               freeze_main=False, reset_prediction_head=True, seed=0):
+                               freeze_main=False, reset_prediction_head=True):
     """ Copy model parameters from pretrained model except the prediction head.
 
     Args:
@@ -107,25 +107,18 @@ def init_model_from_pretrained(model, pretrained_dir,
             of the `main body` (train the prediction head only), else train all.
         reset_prediction_head: If True, reset parameters of the prediction head,
             else keep the pretrained weights.
-        seed: Optionally, the training seed
 
     Returns:
         Updated pytorch model object.
     """
     from torch_geometric.graphgym.checkpoint import MODEL_STATE
 
-    ckpt_file = get_final_pretrained_ckpt(osp.join(pretrained_dir, str(seed), 'ckpt'))
+    ckpt_file = get_final_pretrained_ckpt(osp.join(pretrained_dir, '0', 'ckpt'))
     logging.info(f"[*] Loading from pretrained model: {ckpt_file}")
 
-    ckpt = torch.load(ckpt_file, map_location=torch.device('cpu'))
+    ckpt = torch.load(ckpt_file)
     pretrained_dict = ckpt[MODEL_STATE]
     model_dict = model.state_dict()
-
-    if not list(pretrained_dict.keys())[0].startswith('model.'):
-        # Update checkpoint dict for models saved with GraphGym PyG prior v2.1
-        for k in list(pretrained_dict.keys()):
-            # print(f'    updating: {k}   ->   model.{k}')
-            pretrained_dict[f'model.{k}'] = pretrained_dict.pop(k)
 
     # print('>>>> pretrained dict: ')
     # print(pretrained_dict.keys())

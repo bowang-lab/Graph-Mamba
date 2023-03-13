@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch_geometric.graphgym.register as register
 from torch_geometric.graphgym.config import cfg
 from torch_geometric.graphgym.register import register_node_encoder
 
@@ -42,33 +41,32 @@ class KernelPENodeEncoder(torch.nn.Module):
         norm_type = pecfg.raw_norm_type.lower()  # Raw PE normalization layer type
         self.pass_as_var = pecfg.pass_as_var  # Pass PE also as a separate variable
 
-        if dim_emb - dim_pe < 0: # formerly 1, but you could have zero feature size
+        if dim_emb - dim_pe < 1:
             raise ValueError(f"PE dim size {dim_pe} is too large for "
                              f"desired embedding size of {dim_emb}.")
 
-        if expand_x and dim_emb - dim_pe > 0:
+        if expand_x:
             self.linear_x = nn.Linear(dim_in, dim_emb - dim_pe)
-        self.expand_x = expand_x and dim_emb - dim_pe > 0
+        self.expand_x = expand_x
 
         if norm_type == 'batchnorm':
             self.raw_norm = nn.BatchNorm1d(num_rw_steps)
         else:
             self.raw_norm = None
 
-        activation = nn.ReLU  # register.act_dict[cfg.gnn.act]
         if model_type == 'mlp':
             layers = []
             if n_layers == 1:
                 layers.append(nn.Linear(num_rw_steps, dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
             else:
                 layers.append(nn.Linear(num_rw_steps, 2 * dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
                 for _ in range(n_layers - 2):
                     layers.append(nn.Linear(2 * dim_pe, 2 * dim_pe))
-                    layers.append(activation())
+                    layers.append(nn.ReLU())
                 layers.append(nn.Linear(2 * dim_pe, dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
             self.pe_encoder = nn.Sequential(*layers)
         elif model_type == 'linear':
             self.pe_encoder = nn.Linear(num_rw_steps, dim_pe)
@@ -92,9 +90,9 @@ class KernelPENodeEncoder(torch.nn.Module):
 
         # Expand node features if needed
         if self.expand_x:
-            h = self.linear_x(batch.x)
+            h = self.linear_x(batch.x.to(torch.float32))
         else:
-            h = batch.x
+            h = batch.x.to(torch.float32)
         # Concatenate final PEs to input embedding
         batch.x = torch.cat((h, pos_enc), 1)
         # Keep PE also separate in a variable (e.g. for skip connections to input)

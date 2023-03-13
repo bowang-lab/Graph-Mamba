@@ -31,7 +31,7 @@ class SANTransformer(torch.nn.Module):
         # torch.nn.init.xavier_uniform_(fake_edge_emb.weight.data)
         Layer = {
             'SANLayer': SANLayer,
-            'SAN2Layer': SAN2Layer,
+            'SAN2Layer': SAN2Layer
         }.get(cfg.gt.layer_type)
         layers = []
         for _ in range(cfg.gt.layers):
@@ -39,7 +39,7 @@ class SANTransformer(torch.nn.Module):
                                 in_dim=cfg.gt.dim_hidden,
                                 out_dim=cfg.gt.dim_hidden,
                                 num_heads=cfg.gt.n_heads,
-                                full_graph=cfg.gt.full_graph,
+                                secondary_edges=cfg.gt.secondary_edges,
                                 fake_edge_emb=fake_edge_emb,
                                 dropout=cfg.gt.dropout,
                                 layer_norm=cfg.gt.layer_norm,

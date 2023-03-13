@@ -68,9 +68,9 @@ class CustomLogger(Logger):
 
         if true.shape[0] < 1e7:  # AUROC computation for very large datasets is too slow.
             # TorchMetrics AUROC on GPU if available.
-            auroc_score = auroc(pred_score.to(torch.device(cfg.accelerator)),
-                                true.to(torch.device(cfg.accelerator)),
-                                task='binary')
+            auroc_score = auroc(pred_score.to(torch.device(cfg.device)),
+                                true.to(torch.device(cfg.device)),
+                                pos_label=1)
             if self.test_scores:
                 # SK-learn version.
                 try:
@@ -109,9 +109,8 @@ class CustomLogger(Logger):
         if true.shape[0] < 1e7:
             # AUROC computation for very large datasets runs out of memory.
             # TorchMetrics AUROC on GPU is much faster than sklearn for large ds
-            res['auc'] = reformat(auroc(pred_score.to(torch.device(cfg.accelerator)),
-                                        true.to(torch.device(cfg.accelerator)).squeeze(),
-                                        task='multiclass',
+            res['auc'] = reformat(auroc(pred_score.to(torch.device(cfg.device)),
+                                        true.to(torch.device(cfg.device)).squeeze(),
                                         num_classes=pred_score.shape[1],
                                         average='macro'))
 
@@ -128,29 +127,25 @@ class CustomLogger(Logger):
         true, pred_score = torch.cat(self._true), torch.cat(self._pred)
         reformat = lambda x: round(float(x), cfg.round)
 
-        # MetricWrapper will remove NaNs and apply the metric to each target dim
+        # Send to GPU to speed up TorchMetrics if possible.
+        true = true.to(torch.device(cfg.device))
+        pred_score = pred_score.to(torch.device(cfg.device))
         acc = MetricWrapper(metric='accuracy',
                             target_nan_mask='ignore-mean-label',
-                            task='binary',
+                            threshold=0.,
                             cast_to_int=True)
+        ap = MetricWrapper(metric='averageprecision',
+                           target_nan_mask='ignore-mean-label',
+                           pos_label=1,
+                           cast_to_int=True)
         auroc = MetricWrapper(metric='auroc',
                               target_nan_mask='ignore-mean-label',
-                              task='binary',
+                              pos_label=1,
                               cast_to_int=True)
-        # ap = MetricWrapper(metric='averageprecision',
-        #                    target_nan_mask='ignore-mean-label',
-        #                    task='binary',
-        #                    cast_to_int=True)
-        ogb_ap = reformat(metrics_ogb.eval_ap(true.cpu().numpy(),
-                                              pred_score.cpu().numpy())['ap'])
-        # Send to GPU to speed up TorchMetrics if possible.
-        true = true.to(torch.device(cfg.accelerator))
-        pred_score = pred_score.to(torch.device(cfg.accelerator))
         results = {
-            'accuracy': reformat(acc(torch.sigmoid(pred_score), true)),
+            'accuracy': reformat(acc(pred_score, true)),
+            'ap': reformat(ap(pred_score, true)),
             'auc': reformat(auroc(pred_score, true)),
-            # 'ap': reformat(ap(pred_score, true)),  # Slightly differs from sklearn.
-            'ap': ogb_ap,
         }
 
         if self.test_scores:
@@ -164,9 +159,9 @@ class CustomLogger(Logger):
                 'auc': reformat(
                     metrics_ogb.eval_rocauc(true, pred_score)['rocauc']),
             }
-            assert np.isclose(ogb['accuracy'], results['accuracy'], atol=1e-05)
-            assert np.isclose(ogb['ap'], results['ap'], atol=1e-05)
-            assert np.isclose(ogb['auc'], results['auc'], atol=1e-05)
+            assert np.isclose(ogb['accuracy'], results['accuracy'])
+            assert np.isclose(ogb['ap'], results['ap'])
+            assert np.isclose(ogb['auc'], results['auc'])
 
         return results
 

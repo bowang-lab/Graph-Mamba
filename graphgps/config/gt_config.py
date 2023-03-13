@@ -25,8 +25,14 @@ def set_cfg_gt(cfg):
     # Size of the hidden node and edge representation
     cfg.gt.dim_hidden = 64
 
+    # Size of the edge embedding
+    cfg.gt.dim_edge = None
+
     # Full attention SAN transformer including all possible pairwise edges
     cfg.gt.full_graph = True
+
+    # Type of extra edges used for transformer
+    cfg.gt.secondary_edges = 'full_graph'
 
     # SAN real vs fake edge attention weighting coefficient
     cfg.gt.gamma = 1e-5
@@ -47,6 +53,8 @@ def set_cfg_gt(cfg):
     cfg.gt.batch_norm = True
 
     cfg.gt.residual = True
+
+    cfg.gt.activation = 'relu'
 
     # BigBird model/GPS-BigBird layer.
     cfg.gt.bigbird = CN()

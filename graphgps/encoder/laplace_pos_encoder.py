@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch_geometric.graphgym.register as register
 from torch_geometric.graphgym.config import cfg
 from torch_geometric.graphgym.register import register_node_encoder
 
@@ -35,13 +34,13 @@ class LapPENodeEncoder(torch.nn.Module):
         norm_type = pecfg.raw_norm_type.lower()  # Raw PE normalization layer type
         self.pass_as_var = pecfg.pass_as_var  # Pass PE also as a separate variable
 
-        if dim_emb - dim_pe < 0: # formerly 1, but you could have zero feature size
+        if dim_emb - dim_pe < 1:
             raise ValueError(f"LapPE size {dim_pe} is too large for "
                              f"desired embedding size of {dim_emb}.")
 
-        if expand_x and dim_emb - dim_pe > 0:
+        if expand_x:
             self.linear_x = nn.Linear(dim_in, dim_emb - dim_pe)
-        self.expand_x = expand_x and dim_emb - dim_pe > 0
+        self.expand_x = expand_x
 
         # Initial projection of eigenvalue and the node's eigenvector value
         self.linear_A = nn.Linear(2, dim_pe)
@@ -50,7 +49,6 @@ class LapPENodeEncoder(torch.nn.Module):
         else:
             self.raw_norm = None
 
-        activation = nn.ReLU  # register.act_dict[cfg.gnn.act]
         if model_type == 'Transformer':
             # Transformer model for LapPE
             encoder_layer = nn.TransformerEncoderLayer(d_model=dim_pe,
@@ -62,15 +60,15 @@ class LapPENodeEncoder(torch.nn.Module):
             # DeepSet model for LapPE
             layers = []
             if n_layers == 1:
-                layers.append(activation())
+                layers.append(nn.ReLU())
             else:
                 self.linear_A = nn.Linear(2, 2 * dim_pe)
-                layers.append(activation())
+                layers.append(nn.ReLU())
                 for _ in range(n_layers - 2):
                     layers.append(nn.Linear(2 * dim_pe, 2 * dim_pe))
-                    layers.append(activation())
+                    layers.append(nn.ReLU())
                 layers.append(nn.Linear(2 * dim_pe, dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
             self.pe_encoder = nn.Sequential(*layers)
 
         self.post_mlp = None
@@ -79,15 +77,15 @@ class LapPENodeEncoder(torch.nn.Module):
             layers = []
             if post_n_layers == 1:
                 layers.append(nn.Linear(dim_pe, dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
             else:
                 layers.append(nn.Linear(dim_pe, 2 * dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
                 for _ in range(post_n_layers - 2):
                     layers.append(nn.Linear(2 * dim_pe, 2 * dim_pe))
-                    layers.append(activation())
+                    layers.append(nn.ReLU())
                 layers.append(nn.Linear(2 * dim_pe, dim_pe))
-                layers.append(activation())
+                layers.append(nn.ReLU())
             self.post_mlp = nn.Sequential(*layers)
 
 

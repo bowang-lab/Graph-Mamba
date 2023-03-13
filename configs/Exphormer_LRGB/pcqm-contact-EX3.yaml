@@ -1,0 +1,70 @@
+out_dir: results
+metric_best: mrr
+num_workers: 4
+wandb:
+  use: True
+  project: pcqm4m-contact
+  entity: expand-gnns
+dataset:
+  format: OGB
+  name: PCQM4Mv2Contact-shuffle
+  task: graph  # PCQM4Mv2Contact is edge-level task, but because it is inductive, set to 'graph'
+  task_type: classification
+  resample_negative: True
+  transductive: False
+  node_encoder: True
+  node_encoder_name: Atom+LapPE
+  node_encoder_bn: False
+  edge_encoder: True
+  edge_encoder_name: Bond
+  edge_encoder_bn: False
+prep:
+  exp: False
+  exp_deg: 3
+  use_exp_edges: False
+  add_edge_index: True # Set True if you want to add real edges beside expander edges
+  num_virt_node: 6 # Set True if you want to add global node connections beside expander edges
+posenc_LapPE:
+  enable: True
+  eigen:
+    laplacian_norm: none
+    eigvec_norm: L2
+    max_freqs: 10
+  model: DeepSet
+  dim_pe: 16
+  layers: 2
+  raw_norm_type: none
+train:
+  mode: custom
+  batch_size: 128
+  eval_period: 1
+  ckpt_period: 100
+model:
+  type: MultiModel
+  loss_fun: l1
+  graph_pooling: mean
+gt:
+  layer_type: CustomGatedGCN+Exphormer
+  layers: 9
+  n_heads: 4
+  dim_hidden: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dropout: 0.0
+  attn_dropout: 0.5
+  layer_norm: False
+  batch_norm: True
+gnn:
+  head: inductive_edge
+  layers_pre_mp: 0
+  layers_post_mp: 1  # Not used when `gnn.head: san_graph`
+  dim_inner: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
+  batchnorm: True
+  act: relu
+  dropout: 0.0
+optim:
+  clip_grad_norm: True
+  optimizer: adamW
+  weight_decay: 0.0
+  base_lr: 0.0003
+  max_epoch: 200
+  scheduler: cosine_with_warmup
+  num_warmup_epochs: 10
