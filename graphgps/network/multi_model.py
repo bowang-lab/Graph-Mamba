@@ -64,7 +64,7 @@ class FeatureEncoder(torch.nn.Module):
 
 
 class MultiModel(torch.nn.Module):
-    """Multi-scale graph x-former.
+    """Multiple layer types can be combined here.
     """
 
     def __init__(self, dim_in, dim_out):
@@ -111,7 +111,7 @@ class MultiModel(torch.nn.Module):
 
 
 class SingleModel(torch.nn.Module):
-    """Single model MPNN or X-former
+    """A single layer type can be used without FFN between the layers.
     """
 
     def __init__(self, dim_in, dim_out):

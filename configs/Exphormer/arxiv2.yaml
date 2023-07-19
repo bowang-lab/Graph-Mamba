@@ -1,0 +1,70 @@
+out_dir: results
+metric_best: accuracy
+wandb:
+  use: True
+  project: arxiv
+  entity: expand-gnns
+dataset:
+  format: OGB
+  name: ogbn-arxiv
+  task: node
+  task_type: classification
+  transductive: False
+  node_encoder: False
+  node_encoder_name: LinearNode
+  node_encoder_bn: False
+  edge_encoder: True
+  edge_encoder_name: DummyEdge
+  edge_encoder_bn: False
+prep:
+  exp: True
+  exp_deg: 3 # Algorithm will use 3 permutations or 3 Hamiltonian cycles, so actual degree will be 6
+  add_self_loops: False
+  num_virt_node: 0
+posenc_RWSE:
+  enable: False
+  kernel:
+    times_func: range(1,17)
+  model: Linear
+  dim_pe: 16
+  raw_norm_type: BatchNorm
+train:
+  mode: custom
+  batch_size: 1
+  eval_period: 1
+  ckpt_period: 100
+model:
+  type: MultiModel
+  loss_fun: cross_entropy
+  edge_decoding: dot
+  graph_pooling: add
+gt:
+  layer_type: GCN+Exphormer # some other options: Exphormer,CustomGatedGCN+Exphormer,  GINE+Exphormer, GINE, GINE__exp
+  layers: 4
+  n_heads: 2
+  dim_hidden: 80  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dropout: 0.3
+  attn_dropout: 0.5
+  layer_norm: False
+  batch_norm: True
+gnn:
+  head: inductive_node
+  layers_pre_mp: 1
+  # layers_mp: 3
+  layers_post_mp: 1
+  dim_inner: 80
+  layer_type: generalconv
+  stage_type: stack
+  batchnorm: True
+  act: relu
+  dropout: 0.3
+  agg: add
+  normalize_adj: False
+optim:
+  clip_grad_norm: True
+  optimizer: adamW
+  weight_decay: 1e-3
+  base_lr: 0.001
+  max_epoch: 600
+  scheduler: cosine_with_warmup
+  num_warmup_epochs: 5

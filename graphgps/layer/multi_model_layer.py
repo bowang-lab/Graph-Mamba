@@ -132,7 +132,7 @@ class LocalModel(nn.Module):
 
 class GlobalModel(nn.Module):
     """
-    Full Graph attention x-former layer
+    Attention layer
     """
 
     def __init__(self, dim_h, global_model_type, edge_type, use_edge_attr, edge_attr_type, num_heads,
@@ -224,7 +224,13 @@ class GlobalModel(nn.Module):
 
 
 class MultiLayer(nn.Module):
-    """Local MPNN + full graph attention x-former layers.
+    """Any combination of different models can be made here.
+      Each layer can have several types of MPNN and Attention models combined.
+      Examples:
+      1. GCN
+      2. GCN + Exphormer
+      3. GINE + CustomGatedGCN
+      4. GAT + CustomGatedGCN + Exphormer + Transformer
     """
 
     def __init__(self, dim_h,
@@ -340,7 +346,8 @@ class MultiLayer(nn.Module):
 
 
 class SingleLayer(nn.Module):
-    """Local MPNN + full graph attention x-former layers.
+    """Model just uses one layer type. 
+    Difference with the Multi_Model is that after each layer there is no combining representations and Feed Forward network.
     """
 
     def __init__(self, dim_h,

@@ -18,10 +18,11 @@ dataset:
   edge_encoder_bn: False
 prep:
   exp: True
-  exp_algorithm: 'Random-d'
+  exp_algorithm: 'Hamiltonian'
   exp_deg: 5 # Algorithm will use 5 permutations or 5 Hamiltonian cycles, so actual degree will be 10
   add_edge_index: True # Set True if you want to add real edges beside expander edges
   num_virt_node: 1 # Set True if you want to add global node connections beside expander edges
+  add_self_loops: False
 posenc_EquivStableLapPE:
   enable: True
   eigen:

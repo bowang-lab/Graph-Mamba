@@ -1,0 +1,72 @@
+out_dir: results
+metric_best: accuracy
+wandb:
+  use: True
+  project: photo3
+  entity: expand-gnns
+dataset:
+  format: PyG-Amazon
+  name: photo
+  task: node
+  task_type: classification
+  transductive: True
+  node_encoder: True
+  node_encoder_name: LinearNode
+  node_encoder_bn: False
+  edge_encoder: True
+  edge_encoder_name: DummyEdge
+  edge_encoder_bn: False
+  split: [0.6, 0.2, 0.2]
+prep:
+  exp: True
+  exp_deg: 3 # Algorithm will use 3 permutations or 3 Hamiltonian cycles, so actual degree will be 6
+  add_edge_index: True # Set True if you want to add real edges beside expander edges
+  num_virt_node: 0 # Set True if you want to add global node connections beside expander edges
+posenc_LapPE:
+  enable: False
+  eigen:
+    laplacian_norm: none
+    eigvec_norm: L2
+    max_freqs: 8
+  model: DeepSet
+  dim_pe: 8
+  layers: 2
+  n_heads: 4  # Only used when `posenc.model: Transformer`
+  raw_norm_type: none
+train:
+  mode: custom
+  batch_size: 32
+  eval_period: 1
+  ckpt_period: 100
+model:
+  type: MultiModel
+  loss_fun: cross_entropy
+  edge_decoding: dot
+  graph_pooling: add
+gt:
+  layer_type: GCN+Exphormer # some other options: Exphormer, GINE+Exphormer, GINE, GINE__exp
+  layers: 4
+  n_heads: 2
+  dim_hidden: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dropout: 0.4
+  attn_dropout: 0.8
+  layer_norm: False
+  batch_norm: True
+gnn:
+  head: default
+  layers_pre_mp: 1
+  layers_post_mp: 1  # Not used when `gnn.head: san_graph`
+  dim_inner: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
+  batchnorm: True
+  act: relu
+  dropout: 0.4
+  agg: mean
+  normalize_adj: False
+optim:
+  clip_grad_norm: True
+  optimizer: adamW
+  weight_decay: 1e-3
+  base_lr: 0.001
+  max_epoch: 100
+  scheduler: cosine_with_warmup
+  num_warmup_epochs: 5

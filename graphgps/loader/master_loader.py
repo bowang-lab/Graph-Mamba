@@ -249,6 +249,7 @@ def load_dataset_master(format, name, dataset_dir):
             pre_transform_in_memory(dataset,
                                     partial(generate_random_expander,
                                             degree = cfg.prep.exp_deg,
+                                            algorithm = cfg.prep.exp_algorithm,
                                             rng = None,
                                             max_num_iters = cfg.prep.exp_max_num_iters,
                                             exp_index = j),

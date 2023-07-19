@@ -2,11 +2,11 @@ out_dir: results
 metric_best: accuracy
 wandb:
   use: True
-  project: CIFAR10
+  project: MNIST
   entity: expand-gnns
 dataset:
   format: PyG-GNNBenchmarkDataset
-  name: CIFAR10
+  name: MNIST
   task: graph
   task_type: classification
   transductive: False
@@ -18,10 +18,11 @@ dataset:
   edge_encoder_bn: False
 prep:
   exp: True
-  exp_algorithm: 'Random-d'
   exp_deg: 5 # Algorithm will use 5 permutations or 5 Hamiltonian cycles, so actual degree will be 10
+  exp_algorithm: 'Hamiltonian'
   add_edge_index: True # Set True if you want to add real edges beside expander edges
   num_virt_node: 1 # Set True if you want to add global node connections beside expander edges
+  add_self_loops: True
 posenc_EquivStableLapPE:
   enable: True
   eigen:

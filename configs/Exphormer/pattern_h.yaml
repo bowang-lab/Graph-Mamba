@@ -1,68 +1,80 @@
 out_dir: results
-metric_best: accuracy
+metric_best: accuracy-SBM
 wandb:
   use: True
-  project: CIFAR10
+  project: PATTERN
   entity: expand-gnns
 dataset:
   format: PyG-GNNBenchmarkDataset
-  name: CIFAR10
+  name: PATTERN
   task: graph
   task_type: classification
   transductive: False
+  split_mode: standard
   node_encoder: True
   node_encoder_name: LinearNode+EquivStableLapPE
   node_encoder_bn: False
   edge_encoder: True
-  edge_encoder_name: LinearEdge
+  edge_encoder_name: DummyEdge
   edge_encoder_bn: False
 prep:
   exp: True
-  exp_algorithm: 'Random-d'
-  exp_deg: 5 # Algorithm will use 5 permutations or 5 Hamiltonian cycles, so actual degree will be 10
+  exp_algorithm: 'Hamiltonian'
+  use_exp_edges: True
+  exp_deg: 7 # Algorithm will use 7 permutations or 7 Hamiltonian cycles, so actual degree will be 14
   add_edge_index: True # Set True if you want to add real edges beside expander edges
-  num_virt_node: 1 # Set True if you want to add global node connections beside expander edges
+  num_virt_node: 4 # Set True if you want to add global node connections beside expander edges
+  add_self_loops: False
 posenc_EquivStableLapPE:
   enable: True
   eigen:
     laplacian_norm: none
     eigvec_norm: L2
-    max_freqs: 8
+    max_freqs: 10
   raw_norm_type: none
 train:
   mode: custom
-  batch_size: 16
+  batch_size: 32
   eval_period: 1
   ckpt_period: 100
 model:
   type: MultiModel
-  loss_fun: cross_entropy
+  loss_fun: weighted_cross_entropy
   edge_decoding: dot
-  graph_pooling: mean
-gt:
+gt: 
   layer_type: CustomGatedGCN+Exphormer # some other options: Exphormer, GINE+Exphormer, GINE, GINE__exp
-  layers: 5
+  layers: 4
   n_heads: 4
   dim_hidden: 40  # `gt.dim_hidden` must match `gnn.dim_inner`
-  dropout: 0.1
-  attn_dropout: 0.1
+  dropout: 0.0
+  attn_dropout: 0.5
   layer_norm: False
   batch_norm: True
 gnn:
-  head: default
+  head: inductive_node
   layers_pre_mp: 0
-  layers_post_mp: 2
+  layers_post_mp: 3
   dim_inner: 40  # `gt.dim_hidden` must match `gnn.dim_inner`
-  batchnorm: False
+  batchnorm: True
   act: relu
-  dropout: 0.1
+  dropout: 0.0
   agg: mean
   normalize_adj: False
+#optim:
+#  clip_grad_norm: True
+#  optimizer: adamW
+#  weight_decay: 0.0
+#  base_lr: 0.0005
+#  max_epoch: 1000
+#  scheduler: reduce_on_plateau
+#  reduce_factor: 0.5
+#  schedule_patience: 10
+#  min_lr: 1e-5
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 1e-5
-  base_lr: 0.001
-  max_epoch: 150
+  weight_decay: 2e-5
+  base_lr: 0.0002
+  max_epoch: 120
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5

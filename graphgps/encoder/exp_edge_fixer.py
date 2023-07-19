@@ -22,7 +22,7 @@ class ExpanderEdgeFixer(nn.Module):
         self.add_edge_index = add_edge_index
         self.num_virt_node = num_virt_node
         self.exp_edge_attr = nn.Embedding(1, cfg.gt.dim_edge)
-        self.use_exp_edges = cfg.prep.use_exp_edges
+        self.use_exp_edges = cfg.prep.use_exp_edges and cfg.prep.exp
 
         if self.num_virt_node > 0:
             self.virt_node_emb = nn.Embedding(self.num_virt_node, cfg.gt.dim_hidden)

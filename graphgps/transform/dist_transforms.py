@@ -46,6 +46,11 @@ def add_self_loops(data):
   edge_list = data.edge_index
   vertex_list = torch.unique(edge_list)
   data.edge_index = torch.cat((edge_list, vertex_list.expand(2, -1)), 1)
+  if hasattr(data, 'edge_attr') and data.edge_attr is not None:
+     assert data.edge_attr.shape[0] == len(edge_list)
+     self_loop_feats = torch.zeros(len(vertex_list), data.edge_attr.shape[1])
+     data.edge_attr = torch.cat((data.edge_attr, self_loop_feats))
+
   return data
 
 def add_dist_features(data, max_n, is_undirected, cutoff=None):

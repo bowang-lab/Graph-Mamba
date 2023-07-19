@@ -16,9 +16,7 @@ dataset:
   edge_encoder_name: DummyEdge
   edge_encoder_bn: False
 prep:
-  exp: True
-  use_exp_edges: False
-  exp_deg: 5
+  exp: False
   add_edge_index: True # Set True if you want to add real edges beside expander edges
   num_virt_node: 4 # Set True if you want to add global node connections beside expander edges
 posenc_ERN:
