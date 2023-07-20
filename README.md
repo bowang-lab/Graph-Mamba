@@ -14,7 +14,7 @@
 ![Exphormer-viz](./Exphormers.png)
 
 
-In this work we introduce new sparse transformers for graph data, and use them in the [GraphGPS](https://github.com/rampasek/GraphGPS) framework. Our sparse transformers outperform BigBird and Performer in all cases we tried, which have been mainly designed for the natural language processing context; in many cases we even get better results than full (dense attention) transformers. Our sparse transformer has three components: actual edges, expander graphs, and universal connectors or virtual nodes. We combine these components into a single sparse attention mechanism.
+In this work we introduce new sparse transformers for graph data, and use them in the [GraphGPS](https://github.com/rampasek/GraphGPS) framework. Our sparse transformers outperform BigBird and Performer in all cases we tried, which have been mainly designed for the natural language processing context; in many cases, we even get better results than full (dense attention) transformers. Our sparse transformer has three components: actual edges, expander graphs, and universal connectors or virtual nodes. We combine these components into a single sparse attention mechanism.
 
 
 ### Python environment setup with Conda
@@ -53,15 +53,15 @@ You can also set your wandb settings and use wandb.
 
 ### Guide on configs files
 
-You can change the following parameters in the config files for different parameters and variants of the Exphormer:
+Most of the configs are shared with [GraphGPS](https://github.com/rampasek/GraphGPS) code. You can change the following parameters in the config files for different parameters and variants of the Exphormer:
 ```
 prep:
   exp: True  # Set True for using expander graphs, set False otherwise. 
     # Alternatively you can set use_exp_edges to False.
     # In this case expander graphs will be calculated but not used in the Exphormer. 
-  exp_deg: 5 # Set the degree of expander graph.
-    # Please note that if you set this to d, algorithm will use d permutations 
-    # or d Hamiltonian cycles, so actual degree of the expander graph will be 2d
+  exp_deg: 5 # Set the degree of the expander graph.
+    # Please note that if you set this to d, the algorithm will use d permutations 
+    # or d Hamiltonian cycles, so the actual degree of the expander graph will be 2d
   exp_algorithm: 'Random-d' # Options are ['Random-d', 'Random-d2', 'Hamiltonian].
     # Default value is 'Random-d'
   add_edge_index: True # Set True if you want to add real edges beside expander edges
@@ -71,12 +71,13 @@ prep:
 
 ## Citation
 
-Our work can be cited using following bibtex:
+Our work can be cited using the following bibtex:
 ```bibtex
-@article{shirzad2023exphormer,
+@inproceedings{shirzad2023exphormer,
   title={Exphormer: Sparse transformers for graphs},
   author={Shirzad, Hamed and Velingker, Ameya and Venkatachalam, Balaji and Sutherland, Danica J and Sinop, Ali Kemal},
-  journal={arXiv preprint arXiv:2303.06147},
+  booktitle={International Conference on Machine Learning},
+  eprinttype={arXiv}, eprint={2303.06147},
   year={2023}
 }
 ```
