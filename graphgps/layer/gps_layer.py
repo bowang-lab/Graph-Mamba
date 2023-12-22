@@ -13,6 +13,27 @@ from graphgps.layer.gine_conv_layer import GINEConvESLapPE
 from graphgps.layer.bigbird_layer import SingleBigBirdLayer
 from mamba_ssm import Mamba
 
+def permute_within_batch(batch):
+    # Enumerate over unique batch indices
+    unique_batches = torch.unique(batch)
+    
+    # Initialize list to store permuted indices
+    permuted_indices = []
+
+    for batch_index in unique_batches:
+        # Extract indices for the current batch
+        indices_in_batch = (batch == batch_index).nonzero().squeeze()
+        
+        # Permute indices within the current batch
+        permuted_indices_in_batch = indices_in_batch[torch.randperm(len(indices_in_batch))]
+        
+        # Append permuted indices to the list
+        permuted_indices.append(permuted_indices_in_batch)
+    
+    # Concatenate permuted indices into a single tensor
+    permuted_indices = torch.cat(permuted_indices)
+
+    return permuted_indices
 
 class GPSLayer(nn.Module):
     """Local MPNN + full graph attention x-former layer.
@@ -94,11 +115,11 @@ class GPSLayer(nn.Module):
             bigbird_cfg.n_heads = num_heads
             bigbird_cfg.dropout = dropout
             self.self_attn = SingleBigBirdLayer(bigbird_cfg)
-        elif global_model_type == 'Mamba':
+        elif 'Mamba' in global_model_type:
             self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
                     d_state=16,  # SSM state expansion factor
                     d_conv=4,    # Local convolution width
-                    expand=2,    # Block expansion factor
+                    expand=1,    # Block expansion factor
                 )
         else:
             raise ValueError(f"Unsupported global x-former model: "
@@ -138,7 +159,6 @@ class GPSLayer(nn.Module):
     def forward(self, batch):
         h = batch.x
         h_in1 = h  # for first residual connection
-
         h_out_list = []
         # Local MPNN with edge attributes.
         if self.local_model is not None:
@@ -181,6 +201,11 @@ class GPSLayer(nn.Module):
                 h_attn = self.self_attn(h_dense, attention_mask=mask)
             elif self.global_model_type == 'Mamba':
                 h_attn = self.self_attn(h_dense)[mask]
+            elif self.global_model_type == 'Mamba_Permute':
+                h_ind_perm = permute_within_batch(batch.batch)
+                h_dense_, mask_ = to_dense_batch(h[h_ind_perm], batch.batch)
+                h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                h_attn = self.self_attn(h_dense_)[mask_][h_ind_perm_reverse]
             else:
                 raise RuntimeError(f"Unexpected {self.global_model_type}")
 
