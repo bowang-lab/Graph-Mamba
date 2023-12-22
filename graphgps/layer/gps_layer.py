@@ -13,6 +13,42 @@ from graphgps.layer.gine_conv_layer import GINEConvESLapPE
 from graphgps.layer.bigbird_layer import SingleBigBirdLayer
 from mamba_ssm import Mamba
 
+from torch_geometric.utils import degree, sort_edge_index
+from typing import List
+
+import numpy as np
+import torch
+from torch import Tensor
+
+def lexsort(
+    keys: List[Tensor],
+    dim: int = -1,
+    descending: bool = False,
+) -> Tensor:
+    r"""Performs an indirect stable sort using a sequence of keys.
+
+    Given multiple sorting keys, returns an array of integer indices that
+    describe their sort order.
+    The last key in the sequence is used for the primary sort order, the
+    second-to-last key for the secondary sort order, and so on.
+
+    Args:
+        keys ([torch.Tensor]): The :math:`k` different columns to be sorted.
+            The last key is the primary sort key.
+        dim (int, optional): The dimension to sort along. (default: :obj:`-1`)
+        descending (bool, optional): Controls the sorting order (ascending or
+            descending). (default: :obj:`False`)
+    """
+    assert len(keys) >= 1
+
+    out = keys[0].argsort(dim=dim, descending=descending, stable=True)
+    for k in keys[1:]:
+        index = k.gather(dim, out)
+        index = index.argsort(dim=dim, descending=descending, stable=True)
+        out = out.gather(dim, index)
+    return out
+
+
 def permute_within_batch(batch):
     # Enumerate over unique batch indices
     unique_batches = torch.unique(batch)
@@ -192,7 +228,9 @@ class GPSLayer(nn.Module):
 
         # Multi-head attention.
         if self.self_attn is not None:
-            h_dense, mask = to_dense_batch(h, batch.batch)
+            if self.global_model_type in ['Transformer', 'Performer', 'BigBird', 'Mamba']:
+                h_dense, mask = to_dense_batch(h, batch.batch)
+
             if self.global_model_type == 'Transformer':
                 h_attn = self._sa_block(h_dense, None, ~mask)[mask]
             elif self.global_model_type == 'Performer':
@@ -203,9 +241,16 @@ class GPSLayer(nn.Module):
                 h_attn = self.self_attn(h_dense)[mask]
             elif self.global_model_type == 'Mamba_Permute':
                 h_ind_perm = permute_within_batch(batch.batch)
-                h_dense_, mask_ = to_dense_batch(h[h_ind_perm], batch.batch)
+                h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                 h_ind_perm_reverse = torch.argsort(h_ind_perm)
-                h_attn = self.self_attn(h_dense_)[mask_][h_ind_perm_reverse]
+                h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+            elif self.global_model_type == 'Mamba_Degree':
+                deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                # indcies that sort by batch and then deg, by ascending order
+                h_ind_perm = lexsort([deg, batch.batch])
+                h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
             else:
                 raise RuntimeError(f"Unexpected {self.global_model_type}")
 

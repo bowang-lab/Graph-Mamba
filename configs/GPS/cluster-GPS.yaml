@@ -38,7 +38,7 @@ model:
   loss_fun: weighted_cross_entropy
   edge_decoding: dot
 gt:  # Hyperparameters optimized for ~500k budget.
-  layer_type: CustomGatedGCN+Mamba #CustomGatedGCN+Transformer
+  layer_type: CustomGatedGCN+Mamba_Degree #Mamba #Transformer
   layers: 16
   n_heads: 8
   dim_hidden: 48  # `gt.dim_hidden` must match `gnn.dim_inner`
