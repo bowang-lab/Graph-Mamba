@@ -2,8 +2,8 @@ out_dir: results
 metric_best: accuracy-SBM
 wandb:
   use: True
-  project: PATTERN
-  entity: expand-gnns
+  project: graph-mamba
+  entity: tf-map
 dataset:
   format: PyG-GNNBenchmarkDataset
   name: PATTERN

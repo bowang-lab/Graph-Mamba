@@ -2,7 +2,8 @@ out_dir: results
 metric_best: f1
 wandb:
   use: True
-  project: COCO
+  project: graph-mamba
+  entity: tf-map
 dataset:
   format: PyG-COCOSuperpixels
   name: edge_wt_region_boundary
@@ -35,7 +36,7 @@ model:
   type: GPSModel
   loss_fun: weighted_cross_entropy
 gt:
-  layer_type: CustomGatedGCN+Transformer  #Performer
+  layer_type: CustomGatedGCN+Mamba #Transformer  #Performer
   layers: 4
   n_heads: 8
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`

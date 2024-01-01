@@ -2,7 +2,8 @@ out_dir: results
 metric_best: ap
 wandb:
   use: True
-  project: peptides-func
+  project: graph-mamba
+  entity: tf-map
 dataset:
   format: OGB
   name: peptides-functional
@@ -35,8 +36,7 @@ model:
   loss_fun: cross_entropy
   graph_pooling: mean
 gt:
-  layer_type: CustomGatedGCN+Transformer
-  layers: 4
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_SmallState
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
   dropout: 0.0

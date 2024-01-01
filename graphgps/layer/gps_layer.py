@@ -179,11 +179,44 @@ class GPSLayer(nn.Module):
             bigbird_cfg.dropout = dropout
             self.self_attn = SingleBigBirdLayer(bigbird_cfg)
         elif 'Mamba' in global_model_type:
-            self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
+            if global_model_type.split('_')[-1] == '2':
+                self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
+                        d_state=8,  # SSM state expansion factor
+                        d_conv=4,    # Local convolution width
+                        expand=2,    # Block expansion factor
+                    )
+            elif global_model_type.split('_')[-1] == '4':
+                self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
+                        d_state=4,  # SSM state expansion factor
+                        d_conv=4,    # Local convolution width
+                        expand=4,    # Block expansion factor
+                    )
+            elif global_model_type.split('_')[-1] == 'Multi':
+                self.self_attn = []
+                for i in range(4):
+                    self.self_attn.append(Mamba(d_model=dim_h, # Model dimension d_model
                     d_state=16,  # SSM state expansion factor
                     d_conv=4,    # Local convolution width
                     expand=1,    # Block expansion factor
-                )
+                    ))
+            elif global_model_type.split('_')[-1] == 'SmallConv':
+                self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
+                        d_state=16,  # SSM state expansion factor
+                        d_conv=2,    # Local convolution width
+                        expand=1,    # Block expansion factor
+                    )
+            elif global_model_type.split('_')[-1] == 'SmallState':
+                self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
+                        d_state=8,  # SSM state expansion factor
+                        d_conv=4,    # Local convolution width
+                        expand=1,    # Block expansion factor
+                    )
+            else:
+                self.self_attn = Mamba(d_model=dim_h, # Model dimension d_model
+                        d_state=16,  # SSM state expansion factor
+                        d_conv=4,    # Local convolution width
+                        expand=1,    # Block expansion factor
+                    )
         else:
             raise ValueError(f"Unsupported global x-former model: "
                              f"{global_model_type}")
@@ -293,7 +326,7 @@ class GPSLayer(nn.Module):
                         h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
-            elif self.global_model_type == 'Mamba_Hybrid_Degree':
+            elif 'Mamba_Hybrid_Degree' in self.global_model_type:
                 if batch.split == 'train':
                     h_ind_perm = permute_within_batch(batch.batch)
                     deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
@@ -301,7 +334,15 @@ class GPSLayer(nn.Module):
                     h_ind_perm = h_ind_perm[h_ind_perm_1]
                     h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                     h_ind_perm_reverse = torch.argsort(h_ind_perm)
-                    h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                    if self.global_model_type.split('_')[-1] == 'Multi':
+                        h_attn_list = []
+                        for mod in self.self_attn:
+                            mod = mod.to(h_dense.device)
+                            h_attn = mod(h_dense)[mask][h_ind_perm_reverse]
+                            h_attn_list.append(h_attn) 
+                        h_attn = sum(h_attn_list) / len(h_attn_list)
+                    else:
+                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                 else:
                     mamba_arr = []
                     for i in range(5):
@@ -311,7 +352,16 @@ class GPSLayer(nn.Module):
                         h_ind_perm = h_ind_perm[h_ind_perm_1]
                         h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                         h_ind_perm_reverse = torch.argsort(h_ind_perm)
-                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        if self.global_model_type.split('_')[-1] == 'Multi':
+                            h_attn_list = []
+                            for mod in self.self_attn:
+                                mod = mod.to(h_dense.device)
+                                h_attn = mod(h_dense)[mask][h_ind_perm_reverse]
+                                h_attn_list.append(h_attn) 
+                            h_attn = sum(h_attn_list) / len(h_attn_list)
+                        else:
+                            h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        #h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
             elif self.global_model_type == 'Mamba_Augment':

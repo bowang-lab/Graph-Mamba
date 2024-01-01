@@ -2,8 +2,8 @@ out_dir: results
 metric_best: ap
 wandb:
   use: True
-  project: peptides-func
-  entity: expand-gnns
+  project: graph-mamba
+  entity: tf-map
 dataset:
   format: OGB
   name: peptides-functional

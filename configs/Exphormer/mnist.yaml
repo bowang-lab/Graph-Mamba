@@ -2,8 +2,8 @@ out_dir: results
 metric_best: accuracy
 wandb:
   use: True
-  project: MNIST
-  entity: expand-gnns
+  project: graph-mamba
+  entity: tf-map
 dataset:
   format: PyG-GNNBenchmarkDataset
   name: MNIST
