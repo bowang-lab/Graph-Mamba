@@ -2,7 +2,8 @@ out_dir: results
 metric_best: accuracy
 wandb:
   use: True
-  project: malnet
+  project: graph-mamba
+  entity: tf-map
 dataset:
   format: PyG-MalNetTiny
   name: LocalDegreeProfile
@@ -37,7 +38,7 @@ model:
   edge_decoding: dot
   graph_pooling: max
 gt:
-  layer_type: CustomGatedGCN+Performer
+  layer_type: CustomGatedGCN+Transformer #Mamba_Hybrid_Degree
   layers: 5
   n_heads: 4
   dim_hidden: 64  # `gt.dim_hidden` must match `gnn.dim_inner`

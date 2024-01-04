@@ -25,7 +25,7 @@ from torch_geometric import seed_everything
 from graphgps.finetuning import load_pretrained_model_cfg, \
     init_model_from_pretrained
 from graphgps.logger import create_logger
-
+import warnings
 
 def new_optimizer_config(cfg):
     return OptimizerConfig(optimizer=cfg.optim.optimizer,
@@ -110,6 +110,7 @@ def run_loop_settings():
 
 
 if __name__ == '__main__':
+    warnings.filterwarnings("ignore")
     # Load cmd line args
     args = parse_args()
     # Load config file

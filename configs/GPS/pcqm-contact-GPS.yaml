@@ -30,7 +30,7 @@ posenc_LapPE:
   raw_norm_type: none
 train:
   mode: custom
-  batch_size: 256
+  batch_size: 128
   eval_period: 1
   ckpt_period: 100
 model:
@@ -38,7 +38,7 @@ model:
   loss_fun: cross_entropy
   edge_decoding: dot
 gt:
-  layer_type: CustomGatedGCN+Mamba #Transformer #Mamba
+  layer_type: CustomGatedGCN+Transformer #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
