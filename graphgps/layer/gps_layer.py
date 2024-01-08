@@ -20,6 +20,18 @@ import numpy as np
 import torch
 from torch import Tensor
 
+def permute_nodes_within_identity(identities):
+    unique_identities, inverse_indices = torch.unique(identities, return_inverse=True)
+    node_indices = torch.arange(len(identities), device=identities.device)
+    
+    masks = identities.unsqueeze(0) == unique_identities.unsqueeze(1)
+    
+    # Generate random indices within each identity group using torch.randint
+    permuted_indices = torch.cat([
+        node_indices[mask][torch.randperm(mask.sum(), device=identities.device)] for mask in masks
+    ])
+    return permuted_indices
+
 def sort_rand_gpu(pop_size, num_samples, neighbours):
     # Randomly generate indices and select num_samples in neighbours
     idx_select = torch.argsort(torch.rand(pop_size, device=neighbours.device))[:num_samples]
@@ -290,7 +302,6 @@ class GPSLayer(nn.Module):
         if self.self_attn is not None:
             if self.global_model_type in ['Transformer', 'Performer', 'BigBird', 'Mamba']:
                 h_dense, mask = to_dense_batch(h, batch.batch)
-
             if self.global_model_type == 'Transformer':
                 h_attn = self._sa_block(h_dense, None, ~mask)[mask]
             elif self.global_model_type == 'Performer':
@@ -329,6 +340,7 @@ class GPSLayer(nn.Module):
             elif 'Mamba_Hybrid_Degree' in self.global_model_type:
                 if batch.split == 'train':
                     h_ind_perm = permute_within_batch(batch.batch)
+                    #h_ind_perm = permute_nodes_within_identity(batch.batch)
                     deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
                     h_ind_perm_1 = lexsort([deg[h_ind_perm], batch.batch[h_ind_perm]])
                     h_ind_perm = h_ind_perm[h_ind_perm_1]
@@ -346,6 +358,7 @@ class GPSLayer(nn.Module):
                 else:
                     mamba_arr = []
                     for i in range(5):
+                        #h_ind_perm = permute_nodes_within_identity(batch.batch)
                         h_ind_perm = permute_within_batch(batch.batch)
                         deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
                         h_ind_perm_1 = lexsort([deg[h_ind_perm], batch.batch[h_ind_perm]])
@@ -364,6 +377,40 @@ class GPSLayer(nn.Module):
                         #h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
+            elif self.global_model_type == 'Mamba_Eigen':
+                deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                centrality = batch.EigCentrality
+                if batch.split == 'train':
+                    # Shuffle within 1 STD
+                    centrality_noise = torch.std(centrality)*torch.randn(centrality.shape).to(centrality.device)
+                    # Order by batch, degree, and centrality
+                    h_ind_perm = lexsort([centrality+centrality_noise, deg, batch.batch])
+                else:
+                    h_ind_perm = lexsort([centrality, deg, batch.batch])
+                h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+            
+            elif self.global_model_type == 'Mamba_RWSE':
+                deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                RWSE_sum = torch.sum(batch.pestat_RWSE, dim=1)
+                if batch.split == 'train':
+                    # Shuffle within 1 STD
+                    RWSE_noise = torch.std(RWSE_sum)*torch.randn(RWSE_sum.shape).to(RWSE_sum.device)
+                    # Sort in descending order
+                    # Nodes with more local connections -> larger sum in RWSE
+                    # Nodes with more global connections -> smaller sum in RWSE
+                    # h_ind_perm = lexsort([RWSE_sum+RWSE_noise, batch.batch])
+                    h_ind_perm = lexsort([-RWSE_sum+RWSE_noise, deg, batch.batch])
+                else:
+                    # Sort in descending order
+                    # Nodes with more local connections -> larger sum in RWSE
+                    # Nodes with more global connections -> smaller sum in RWSE
+                    h_ind_perm = lexsort([-RWSE_sum, deg, batch.batch])
+                h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                    
             elif self.global_model_type == 'Mamba_Augment':
                 aug_idx, aug_mask = augment_seq(batch.edge_index, batch.batch, 3)
                 h_dense, mask = to_dense_batch(h[aug_idx], batch.batch[aug_idx])

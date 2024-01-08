@@ -57,7 +57,10 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
                            num_nodes=N)
         )
         evals, evects = np.linalg.eigh(L.toarray())
-        
+        max_eig_index = np.argmax(evals)
+        max_eigenvector = evects[:, max_eig_index]
+        centrality = max_eigenvector / np.linalg.norm(max_eigenvector)
+
         if 'LapPE' in pe_types:
             max_freqs=cfg.posenc_LapPE.eigen.max_freqs
             eigvec_norm=cfg.posenc_LapPE.eigen.eigvec_norm
@@ -69,6 +72,7 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
             evals=evals, evects=evects,
             max_freqs=max_freqs,
             eigvec_norm=eigvec_norm)
+        data.EigCentrality = torch.from_numpy(centrality).float()
 
     if 'SignNet' in pe_types:
         # Eigen-decomposition with numpy for SignNet.

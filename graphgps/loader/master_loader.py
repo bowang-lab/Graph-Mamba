@@ -150,6 +150,7 @@ def load_dataset_master(format, name, dataset_dir):
             dataset = preformat_TUDataset(dataset_dir, name)
 
         elif pyg_dataset_id == 'VOCSuperpixels':
+            dataset_dir = '/datasets/LRGB'
             dataset = preformat_VOCSuperpixels(dataset_dir, name,
                                                cfg.dataset.slic_compactness)
 
