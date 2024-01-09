@@ -410,7 +410,48 @@ class GPSLayer(nn.Module):
                 h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                 h_ind_perm_reverse = torch.argsort(h_ind_perm)
                 h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
-                    
+            
+            elif self.global_model_type == 'Mamba_Cluster':
+                h_ind_perm = permute_within_batch(batch.batch)
+                deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                if batch.split == 'train':
+                    unique_cluster_n = len(torch.unique(batch.LouvainCluster))
+                    permuted_louvain = torch.zeros(batch.LouvainCluster.shape).long().to(batch.LouvainCluster.device)
+                    random_permute = torch.randperm(unique_cluster_n+1).long().to(batch.LouvainCluster.device)
+                    for i in range(len(torch.unique(batch.LouvainCluster))):
+                        indices = torch.nonzero(batch.LouvainCluster == i).squeeze()
+                        permuted_louvain[indices] = random_permute[i]
+                    #h_ind_perm_1 = lexsort([deg[h_ind_perm], permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
+                    h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], deg[h_ind_perm], batch.batch[h_ind_perm]])
+                    #h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
+                    h_ind_perm = h_ind_perm[h_ind_perm_1]
+                    h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                    h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                    h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                else:
+                    #h_ind_perm = lexsort([batch.LouvainCluster, deg, batch.batch])
+                    #h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                    #h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                    #h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                    mamba_arr = []
+                    for i in range(5):
+                        unique_cluster_n = len(torch.unique(batch.LouvainCluster))
+                        permuted_louvain = torch.zeros(batch.LouvainCluster.shape).long().to(batch.LouvainCluster.device)
+                        random_permute = torch.randperm(unique_cluster_n+1).long().to(batch.LouvainCluster.device)
+                        for i in range(len(torch.unique(batch.LouvainCluster))):
+                            indices = torch.nonzero(batch.LouvainCluster == i).squeeze()
+                            permuted_louvain[indices] = random_permute[i]
+                        # potentially permute it 5 times and average
+                        # on the cluster level
+                        #h_ind_perm_1 = lexsort([deg[h_ind_perm], permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
+                        h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], deg[h_ind_perm], batch.batch[h_ind_perm]])
+                        #h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
+                        h_ind_perm = h_ind_perm[h_ind_perm_1]
+                        h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                        h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
             elif self.global_model_type == 'Mamba_Augment':
                 aug_idx, aug_mask = augment_seq(batch.edge_index, batch.batch, 3)
                 h_dense, mask = to_dense_batch(h[aug_idx], batch.batch[aug_idx])
