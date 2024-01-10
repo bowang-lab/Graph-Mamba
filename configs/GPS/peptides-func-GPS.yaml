@@ -43,7 +43,7 @@ model:
   loss_fun: cross_entropy
   graph_pooling: mean
 gt:
-  layer_type: CustomGatedGCN+Mamba_RWSE #Mamba_Hybrid_Degree
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree #Mamba_Hybrid_Degree
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
   dropout: 0.0
@@ -58,11 +58,19 @@ gnn:
   batchnorm: True
   act: relu
   dropout: 0.0
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 0.0
+#   base_lr: 0.0003
+#   max_epoch: 200
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 10
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.0
-  base_lr: 0.0003
+  weight_decay: 0.01
+  base_lr: 0.001
   max_epoch: 200
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10

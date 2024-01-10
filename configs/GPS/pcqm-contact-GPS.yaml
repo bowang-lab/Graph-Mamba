@@ -3,7 +3,7 @@ metric_best: mrr
 num_workers: 4
 wandb:
   use: True
-  project: graph-mamba
+  project: PCQM-Contact
   entity: tf-map
 dataset:
   format: OGB
@@ -38,7 +38,7 @@ model:
   loss_fun: cross_entropy
   edge_decoding: dot
 gt:
-  layer_type: CustomGatedGCN+Transformer #Mamba
+  layer_type: CustomGatedGCN+Cluster #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -57,11 +57,19 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.0
-  base_lr: 0.0003
-  max_epoch: 200
+  weight_decay: 0.01
+  base_lr: 0.001
+  max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 0.0
+#   base_lr: 0.0003
+#   max_epoch: 200
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 10
 #optim:
 #  batch_accumulation: 1
 #  optimizer: adamW

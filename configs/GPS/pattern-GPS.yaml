@@ -2,7 +2,7 @@ out_dir: results
 metric_best: accuracy-SBM
 wandb:
   use: True
-  project: graph-mamba
+  project: PATTERN
   entity: tf-map
 dataset:
   format: PyG-GNNBenchmarkDataset
@@ -38,7 +38,7 @@ model:
   loss_fun: weighted_cross_entropy
   edge_decoding: dot
 gt:  # Hyperparameters optimized for up to ~500k budget.
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_SmallConv #CustomGatedGCN+Transformer
+  layer_type: CustomGatedGCN+Mamba_Cluster #CustomGatedGCN+Transformer
   layers: 6
   n_heads: 4
   dim_hidden: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -59,8 +59,16 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 1e-5
+  weight_decay: 0.01
   base_lr: 0.0005
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 1e-5
+#   base_lr: 0.0005
+#   max_epoch: 100
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 5

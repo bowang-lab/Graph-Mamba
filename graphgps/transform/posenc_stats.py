@@ -77,7 +77,10 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
         data.EigCentrality = torch.from_numpy(centrality).float()
         # Add louvain cluster labels
         G = to_networkx(data)
-        partition = community.greedy_modularity_communities(G)
+        try:
+            partition = community.greedy_modularity_communities(G)
+        except:
+            partition = community.naive_greedy_modularity_communities(G)
         node_community_assignment = [0] * len(G.nodes())
         for i, com in enumerate(partition):
             for node in com:
