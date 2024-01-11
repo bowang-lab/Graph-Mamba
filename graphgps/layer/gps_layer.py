@@ -339,6 +339,7 @@ class GPSLayer(nn.Module):
                         h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
+
             elif 'Mamba_Hybrid_Degree' in self.global_model_type:
                 if batch.split == 'train':
                     h_ind_perm = permute_within_batch(batch.batch)
@@ -379,6 +380,7 @@ class GPSLayer(nn.Module):
                         #h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
+
             elif self.global_model_type == 'Mamba_Eigen':
                 deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
                 centrality = batch.EigCentrality
@@ -420,7 +422,7 @@ class GPSLayer(nn.Module):
                     unique_cluster_n = len(torch.unique(batch.LouvainCluster))
                     permuted_louvain = torch.zeros(batch.LouvainCluster.shape).long().to(batch.LouvainCluster.device)
                     random_permute = torch.randperm(unique_cluster_n+1).long().to(batch.LouvainCluster.device)
-                    for i in range(len(torch.unique(batch.LouvainCluster))):
+                    for i in range(unique_cluster_n):
                         indices = torch.nonzero(batch.LouvainCluster == i).squeeze()
                         permuted_louvain[indices] = random_permute[i]
                     #h_ind_perm_1 = lexsort([deg[h_ind_perm], permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])

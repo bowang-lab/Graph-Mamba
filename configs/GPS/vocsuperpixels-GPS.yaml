@@ -1,7 +1,6 @@
 out_dir: results
 metric_best: f1
 wandb:
-  use: True
   project: PascalVOC-SP
   entity: tf-map
 dataset:

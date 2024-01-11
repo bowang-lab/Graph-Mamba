@@ -53,19 +53,11 @@ gnn:
   batchnorm: True
   act: relu
   dropout: 0.0
-#optim:
-#  clip_grad_norm: True
-#  optimizer: adamW
-#  weight_decay: 0.0
-#  base_lr: 0.0003
-#  max_epoch: 200
-#  scheduler: cosine_with_warmup
-#  num_warmup_epochs: 10
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.01
-  base_lr: 0.001
+  weight_decay: 0.0
+  base_lr: 0.0003
   max_epoch: 200
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
