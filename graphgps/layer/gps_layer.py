@@ -340,7 +340,7 @@ class GPSLayer(nn.Module):
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
 
-            elif 'Mamba_Hybrid_Degree' in self.global_model_type:
+            elif 'Mamba_Hybrid_Degree' == self.global_model_type:
                 if batch.split == 'train':
                     h_ind_perm = permute_within_batch(batch.batch)
                     #h_ind_perm = permute_nodes_within_identity(batch.batch)
@@ -378,6 +378,28 @@ class GPSLayer(nn.Module):
                         else:
                             h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         #h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+            
+            elif 'Mamba_Hybrid_Degree_Noise' == self.global_model_type:
+                if batch.split == 'train':
+                    deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
+                    #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
+                    deg_noise = torch.randn(deg.shape).to(deg.device)
+                    h_ind_perm = lexsort([deg+deg_noise, batch.batch])
+                    h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                    h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                    h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    for i in range(5):
+                        deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
+                        #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
+                        deg_noise = torch.randn(deg.shape).to(deg.device)
+                        h_ind_perm = lexsort([deg+deg_noise, batch.batch])
+                        h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                        h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
 
