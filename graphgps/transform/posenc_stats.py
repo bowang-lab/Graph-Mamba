@@ -58,9 +58,9 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
                            num_nodes=N)
         )
         evals, evects = np.linalg.eigh(L.toarray())
-        max_eig_index = np.argmax(evals)
-        max_eigenvector = evects[:, max_eig_index]
-        centrality = max_eigenvector / np.linalg.norm(max_eigenvector)
+        #max_eig_index = np.argmax(evals)
+        #max_eigenvector = evects[:, max_eig_index]
+        #centrality = max_eigenvector / np.linalg.norm(max_eigenvector)
 
         if 'LapPE' in pe_types:
             max_freqs=cfg.posenc_LapPE.eigen.max_freqs
@@ -74,9 +74,10 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
             max_freqs=max_freqs,
             eigvec_norm=eigvec_norm)
         # Add eigen centrality
-        data.EigCentrality = torch.from_numpy(centrality).float()
+        # data.EigCentrality = torch.from_numpy(centrality).float()
         # Add louvain cluster labels
-        G = to_networkx(data, to_undirected=True)
+        # G = to_networkx(data, to_undirected=True)
+        '''
         try:
             partition = community.greedy_modularity_communities(G)
             node_community_assignment = [0] * len(G.nodes())
@@ -92,7 +93,7 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
                     node_cluster_mapping[node] = idx
             node_community_assignment = [node_cluster_mapping[node] if node in node_cluster_mapping else None for node in range(len(node_cluster_mapping))]
         data.LouvainCluster = torch.from_numpy(np.array(node_community_assignment)).long()
-
+        '''
     if 'SignNet' in pe_types:
         # Eigen-decomposition with numpy for SignNet.
         norm_type = cfg.posenc_SignNet.eigen.laplacian_norm.lower()

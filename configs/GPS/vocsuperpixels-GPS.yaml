@@ -35,7 +35,7 @@ model:
   type: GPSModel
   loss_fun: weighted_cross_entropy
 gt:
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise_Bucket
   layers: 4
   n_heads: 8
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`

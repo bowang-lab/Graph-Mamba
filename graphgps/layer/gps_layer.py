@@ -385,21 +385,67 @@ class GPSLayer(nn.Module):
                 if batch.split == 'train':
                     deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
                     #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
-                    deg_noise = torch.randn(deg.shape).to(deg.device)
+                    # Potentially use torch.rand_like?
+                    #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
+                    #deg_noise = torch.randn(deg.shape).to(deg.device)
+                    deg_noise = torch.rand_like(deg).to(deg.device)
                     h_ind_perm = lexsort([deg+deg_noise, batch.batch])
                     h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                     h_ind_perm_reverse = torch.argsort(h_ind_perm)
                     h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                 else:
                     mamba_arr = []
+                    deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
                     for i in range(5):
-                        deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
                         #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
-                        deg_noise = torch.randn(deg.shape).to(deg.device)
+                        #deg_noise = torch.randn(deg.shape).to(deg.device)
+                        deg_noise = torch.rand_like(deg).to(deg.device)
                         h_ind_perm = lexsort([deg+deg_noise, batch.batch])
                         h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                         h_ind_perm_reverse = torch.argsort(h_ind_perm)
                         h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+            
+            elif 'Mamba_Hybrid_Degree_Noise_Bucket' == self.global_model_type:
+                if batch.split == 'train':
+                    deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
+                    #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
+                    deg_noise = torch.rand_like(deg).to(deg.device)
+                    #deg_noise = torch.randn(deg.shape).to(deg.device)
+                    deg = deg + deg_noise
+                    indices_arr, emb_arr = [],[]
+                    bucket_assign = torch.randint_like(deg, 0, self.NUM_BUCKETS).to(deg.device)
+                    for i in range(self.NUM_BUCKETS):
+                        ind_i = (bucket_assign==i).nonzero().squeeze()
+                        h_ind_perm_sort = lexsort([deg[ind_i], batch.batch[ind_i]])
+                        h_ind_perm_i = ind_i[h_ind_perm_sort]
+                        h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                        h_dense = self.self_attn(h_dense)[mask]
+                        indices_arr.append(h_ind_perm_i)
+                        emb_arr.append(h_dense)
+                    h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                    h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    deg_ = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
+                    for i in range(5):
+                        #deg_noise = torch.std(deg)*torch.randn(deg.shape).to(deg.device)
+                        deg_noise = torch.rand_like(deg_).to(deg_.device)
+                        #deg_noise = torch.randn(deg.shape).to(deg.device)
+                        deg = deg_ + deg_noise
+                        indices_arr, emb_arr = [],[]
+                        bucket_assign = torch.randint_like(deg, 0, self.NUM_BUCKETS).to(deg.device)
+                        for i in range(self.NUM_BUCKETS):
+                            ind_i = (bucket_assign==i).nonzero().squeeze()
+                            h_ind_perm_sort = lexsort([deg[ind_i], batch.batch[ind_i]])
+                            h_ind_perm_i = ind_i[h_ind_perm_sort]
+                            h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                            h_dense = self.self_attn(h_dense)[mask]
+                            indices_arr.append(h_ind_perm_i)
+                            emb_arr.append(h_dense)
+                        h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                        h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
 
