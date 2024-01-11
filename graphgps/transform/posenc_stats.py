@@ -76,15 +76,21 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
         # Add eigen centrality
         data.EigCentrality = torch.from_numpy(centrality).float()
         # Add louvain cluster labels
-        G = to_networkx(data)
+        G = to_networkx(data, to_undirected=True)
         try:
             partition = community.greedy_modularity_communities(G)
+            node_community_assignment = [0] * len(G.nodes())
+            for i, com in enumerate(partition):
+                for node in com:
+                    node_community_assignment[list(G.nodes()).index(node)] = i
         except:
-            partition = community.naive_greedy_modularity_communities(G)
-        node_community_assignment = [0] * len(G.nodes())
-        for i, com in enumerate(partition):
-            for node in com:
-                node_community_assignment[list(G.nodes()).index(node)] = i
+            louvain_communities = community.louvain_communities(G, seed=0)
+            node_cluster_mapping = {}
+            # Assign cluster identities to nodes
+            for idx, com in enumerate(louvain_communities):
+                for node in com:
+                    node_cluster_mapping[node] = idx
+            node_community_assignment = [node_cluster_mapping[node] if node in node_cluster_mapping else None for node in range(len(node_cluster_mapping))]
         data.LouvainCluster = torch.from_numpy(np.array(node_community_assignment)).long()
 
     if 'SignNet' in pe_types:

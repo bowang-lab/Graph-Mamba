@@ -38,7 +38,7 @@ model:
   loss_fun: cross_entropy
   edge_decoding: dot
 gt:
-  layer_type: CustomGatedGCN+Cluster #Mamba
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`

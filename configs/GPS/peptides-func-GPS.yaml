@@ -43,7 +43,7 @@ model:
   loss_fun: cross_entropy
   graph_pooling: mean
 gt:
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree #Mamba_Hybrid_Degree
+  layer_type: CustomGatedGCN+Mamba_Cluster_Bucket #Mamba_Hybrid_Degree
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
   dropout: 0.0

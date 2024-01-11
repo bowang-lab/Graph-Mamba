@@ -128,6 +128,7 @@ class GPSLayer(nn.Module):
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
         self.equivstable_pe = equivstable_pe
+        self.NUM_BUCKETS = 2
 
         # Local message-passing model.
         if local_gnn_type == 'None':
@@ -453,6 +454,85 @@ class GPSLayer(nn.Module):
                         h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
+        
+            elif self.global_model_type == 'Mamba_Hybrid_Degree_Bucket':
+                if batch.split == 'train':
+                    h_ind_perm = permute_within_batch(batch.batch)
+                    deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                    indices_arr, emb_arr = [],[]
+                    for i in range(self.NUM_BUCKETS): 
+                        ind_i = h_ind_perm[h_ind_perm%self.NUM_BUCKETS==i]
+                        h_ind_perm_sort = lexsort([deg[ind_i], batch.batch[ind_i]])
+                        h_ind_perm_i = ind_i[h_ind_perm_sort]
+                        h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                        h_dense = self.self_attn(h_dense)[mask]
+                        indices_arr.append(h_ind_perm_i)
+                        emb_arr.append(h_dense)
+                    h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                    h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    for i in range(5):
+                        h_ind_perm = permute_within_batch(batch.batch)
+                        deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                        indices_arr, emb_arr = [],[]
+                        for i in range(self.NUM_BUCKETS):
+                            ind_i = h_ind_perm[h_ind_perm%self.NUM_BUCKETS==i]
+                            h_ind_perm_sort = lexsort([deg[ind_i], batch.batch[ind_i]])
+                            h_ind_perm_i = ind_i[h_ind_perm_sort]
+                            h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                            h_dense = self.self_attn(h_dense)[mask]
+                            indices_arr.append(h_ind_perm_i)
+                            emb_arr.append(h_dense)
+                        h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                        h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+            
+            elif self.global_model_type == 'Mamba_Cluster_Bucket':
+                h_ind_perm = permute_within_batch(batch.batch)
+                deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
+                if batch.split == 'train':
+                    indices_arr, emb_arr = [],[]
+                    unique_cluster_n = len(torch.unique(batch.LouvainCluster))
+                    permuted_louvain = torch.zeros(batch.LouvainCluster.shape).long().to(batch.LouvainCluster.device)
+                    random_permute = torch.randperm(unique_cluster_n+1).long().to(batch.LouvainCluster.device)
+                    for i in range(len(torch.unique(batch.LouvainCluster))):
+                        indices = torch.nonzero(batch.LouvainCluster == i).squeeze()
+                        permuted_louvain[indices] = random_permute[i]
+                    for i in range(self.NUM_BUCKETS): 
+                        ind_i = h_ind_perm[h_ind_perm%self.NUM_BUCKETS==i]
+                        h_ind_perm_sort = lexsort([permuted_louvain[ind_i], deg[ind_i], batch.batch[ind_i]])
+                        h_ind_perm_i = ind_i[h_ind_perm_sort]
+                        h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                        h_dense = self.self_attn(h_dense)[mask]
+                        indices_arr.append(h_ind_perm_i)
+                        emb_arr.append(h_dense)
+                    h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                    h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    for i in range(5):
+                        indices_arr, emb_arr = [],[]
+                        unique_cluster_n = len(torch.unique(batch.LouvainCluster))
+                        permuted_louvain = torch.zeros(batch.LouvainCluster.shape).long().to(batch.LouvainCluster.device)
+                        random_permute = torch.randperm(unique_cluster_n+1).long().to(batch.LouvainCluster.device)
+                        for i in range(len(torch.unique(batch.LouvainCluster))):
+                            indices = torch.nonzero(batch.LouvainCluster == i).squeeze()
+                            permuted_louvain[indices] = random_permute[i]
+                        for i in range(self.NUM_BUCKETS): 
+                            ind_i = h_ind_perm[h_ind_perm%self.NUM_BUCKETS==i]
+                            h_ind_perm_sort = lexsort([permuted_louvain[ind_i], deg[ind_i], batch.batch[ind_i]])
+                            h_ind_perm_i = ind_i[h_ind_perm_sort]
+                            h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                            h_dense = self.self_attn(h_dense)[mask]
+                            indices_arr.append(h_ind_perm_i)
+                            emb_arr.append(h_dense)
+                        h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                        h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+
             elif self.global_model_type == 'Mamba_Augment':
                 aug_idx, aug_mask = augment_seq(batch.edge_index, batch.batch, 3)
                 h_dense, mask = to_dense_batch(h[aug_idx], batch.batch[aug_idx])

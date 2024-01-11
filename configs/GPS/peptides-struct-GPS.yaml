@@ -37,7 +37,7 @@ model:
   loss_fun: l1
   graph_pooling: mean
 gt:
-  layer_type: CustomGatedGCN+Mamba_Cluster #Mamba_Hybrid_Degree #Mamba
+  layer_type: CustomGatedGCN+Mamba_Cluster #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
