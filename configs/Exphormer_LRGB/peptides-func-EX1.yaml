@@ -2,8 +2,8 @@ out_dir: results
 metric_best: ap
 wandb:
   use: True
-  project: LRGB-Benchmark-RandomSeed-Exphormer #flop_experiment_re #graph-mamba
-  entity: tf-map
+  project: LRGB-Benchmark-RandomSeed-Exphormer
+  entity: project
 dataset:
   format: OGB
   name: peptides-functional

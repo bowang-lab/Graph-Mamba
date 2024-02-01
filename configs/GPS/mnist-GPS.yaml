@@ -37,7 +37,7 @@ model:
   edge_decoding: dot
   graph_pooling: mean
 gt:  # Hyperparameters optimized for ~100k budget.
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise
+  layer_type: CustomGatedGCN+Transformer
   layers: 3
   n_heads: 4
   dim_hidden: 52  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -58,17 +58,8 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.01
-  base_lr: 0.005
+  weight_decay: 1e-5
+  base_lr: 0.001
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
-seed: 0
-# optim:
-#   clip_grad_norm: True
-#   optimizer: adamW
-#   weight_decay: 1e-5
-#   base_lr: 0.001
-#   max_epoch: 100
-#   scheduler: cosine_with_warmup
-#   num_warmup_epochs: 5

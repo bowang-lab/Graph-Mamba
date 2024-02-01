@@ -3,7 +3,7 @@ metric_best: mrr
 num_workers: 4
 wandb:
   use: True
-  project: LRGB-Benchmark-RandomSeed
+  project: PCQMContact-Tuning #Graph_Mamba_Tuning #PCQM-Contact
   entity: project
 dataset:
   format: OGB
@@ -38,7 +38,7 @@ model:
   loss_fun: cross_entropy
   edge_decoding: dot
 gt:
-  layer_type: CustomGatedGCN+Transformer #Mamba_Hybrid_Degree_Noise #Mamba
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise_SmallConv #Degree_Noise #Mamba_Hybrid_Degree_Noise #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -50,15 +50,34 @@ gnn:
   head: inductive_edge
   layers_pre_mp: 0
   layers_post_mp: 1
-  dim_inner: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dim_inner: 96 # `gt.dim_hidden` must match `gnn.dim_inner`
   batchnorm: True
   act: relu
   dropout: 0.0
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.0
-  base_lr: 0.0003
+  weight_decay: 0.01
+  base_lr: 0.002
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 3
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 0.0
+#   base_lr: 0.0003
+#   max_epoch: 200
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 10
+#optim:
+#  batch_accumulation: 1
+#  optimizer: adamW
+#  weight_decay: 0.0
+#  base_lr: 0.0003
+#  max_epoch: 200
+#  scheduler: reduce_on_plateau
+#  reduce_factor: 0.5
+#  schedule_patience: 10
+#  min_lr: 1e-5

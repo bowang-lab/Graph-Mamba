@@ -3,7 +3,7 @@ metric_best: accuracy
 wandb:
   use: True
   project: GNN-Benchmark-RandomSeed-Exphormer
-  entity: tf-map
+  entity: project
 dataset:
   format: PyG-MalNetTiny
   name: LocalDegreeProfile

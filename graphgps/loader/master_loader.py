@@ -110,11 +110,11 @@ def load_dataset_master(format, name, dataset_dir):
         dataset_dir = osp.join(dataset_dir, pyg_dataset_id)
 
         if pyg_dataset_id == 'GNNBenchmarkDataset':
-            dataset_dir = '/datasets/GNN'
+            #dataset_dir = '/datasets/GNN'
             dataset = preformat_GNNBenchmarkDataset(dataset_dir, name)
 
         elif pyg_dataset_id == 'MalNetTiny':
-            dataset_dir = '/datasets/GNN'
+            #dataset_dir = '/datasets/GNN'
             dataset = preformat_MalNetTiny(dataset_dir, feature_set=name)
 
         elif pyg_dataset_id == 'Amazon':
@@ -150,12 +150,12 @@ def load_dataset_master(format, name, dataset_dir):
             dataset = preformat_TUDataset(dataset_dir, name)
 
         elif pyg_dataset_id == 'VOCSuperpixels':
-            dataset_dir = '/datasets/LRGB'
+            #dataset_dir = '/datasets/LRGB'
             dataset = preformat_VOCSuperpixels(dataset_dir, name,
                                                cfg.dataset.slic_compactness)
 
         elif pyg_dataset_id == 'COCOSuperpixels':
-            dataset_dir = '/datasets/LRGB'
+            #dataset_dir = '/datasets/LRGB'
             dataset = preformat_COCOSuperpixels(dataset_dir, name,
                                                 cfg.dataset.slic_compactness)
 
@@ -189,7 +189,7 @@ def load_dataset_master(format, name, dataset_dir):
             dataset = preformat_ogbn(dataset_dir, name)
 
         elif name.startswith('peptides-'):
-            dataset_dir = '/datasets/LRGB'
+            #dataset_dir = '/datasets/LRGB'
             dataset = preformat_Peptides(dataset_dir, name)
 
         ### Link prediction datasets.
@@ -206,7 +206,7 @@ def load_dataset_master(format, name, dataset_dir):
             convert_to_int(dataset, 'test_edge_label')
 
         elif name.startswith('PCQM4Mv2Contact-'):
-            dataset_dir = '/datasets/LRGB'
+            #dataset_dir = '/datasets/LRGB'
             dataset = preformat_PCQM4Mv2Contact(dataset_dir, name)
 
         else:

@@ -3,7 +3,7 @@ metric_best: accuracy-SBM
 wandb:
   use: True
   project: GNN-Benchmark-RandomSeed-Exphormer #graph-mamba
-  entity: tf-map
+  entity: project
 dataset:
   format: PyG-GNNBenchmarkDataset
   name: PATTERN

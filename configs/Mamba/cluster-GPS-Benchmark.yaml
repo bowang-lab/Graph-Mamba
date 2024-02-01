@@ -2,7 +2,7 @@ out_dir: results
 metric_best: accuracy-SBM
 wandb:
   use: True
-  project: GNN-Benchmark-RandomSeed
+  project: Graph-Mamba-Benchmark-GNN #CLUSTER #GNN-Benchmark-RandomSeed #CLUSTER
   entity: project
 dataset:
   format: PyG-GNNBenchmarkDataset
@@ -38,7 +38,7 @@ model:
   loss_fun: weighted_cross_entropy
   edge_decoding: dot
 gt:  # Hyperparameters optimized for ~500k budget.
-  layer_type: CustomGatedGCN+Transformer
+  layer_type: CustomGatedGCN+Performer #Mamba_Hybrid_Noise #Mamba_Hybrid_Degree_Noise #Mamba #Transformer
   layers: 16
   n_heads: 8
   dim_hidden: 48  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -59,8 +59,17 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 1e-5
-  base_lr: 0.0005
+  weight_decay: 1e-5 #0.0001
+  base_lr: 0.0005 #0.001
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
+seed: 0
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 1e-5
+#   base_lr: 0.0005
+#   max_epoch: 100
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 5

@@ -1,15 +1,16 @@
 out_dir: results
-metric_best: mae
-metric_agg: argmin
+metric_best: mrr
+num_workers: 4
 wandb:
   use: True
   project: LRGB-Benchmark-RandomSeed
   entity: project
 dataset:
   format: OGB
-  name: peptides-structural
-  task: graph
-  task_type: regression
+  name: PCQM4Mv2Contact-shuffle
+  task: graph  # PCQM4Mv2Contact is edge-level task, but because it is inductive, set to 'graph'
+  task_type: classification
+  resample_negative: True
   transductive: False
   node_encoder: True
   node_encoder_name: Atom+LapPE
@@ -34,10 +35,10 @@ train:
   ckpt_period: 100
 model:
   type: GPSModel
-  loss_fun: l1
-  graph_pooling: mean
+  loss_fun: cross_entropy
+  edge_decoding: dot
 gt:
-  layer_type: CustomGatedGCN+Transformer
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise #Mamba_Hybrid_Degree_Noise #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -46,9 +47,9 @@ gt:
   layer_norm: False
   batch_norm: True
 gnn:
-  head: default
+  head: inductive_edge
   layers_pre_mp: 0
-  layers_post_mp: 1  # Not used when `gnn.head: san_graph`
+  layers_post_mp: 1
   dim_inner: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
   batchnorm: True
   act: relu
@@ -56,8 +57,27 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.0
-  base_lr: 0.0003
-  max_epoch: 200
+  weight_decay: 0.01
+  base_lr: 0.002
+  max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 0
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 0.0
+#   base_lr: 0.0003
+#   max_epoch: 200
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 10
+#optim:
+#  batch_accumulation: 1
+#  optimizer: adamW
+#  weight_decay: 0.0
+#  base_lr: 0.0003
+#  max_epoch: 200
+#  scheduler: reduce_on_plateau
+#  reduce_factor: 0.5
+#  schedule_patience: 10
+#  min_lr: 1e-5

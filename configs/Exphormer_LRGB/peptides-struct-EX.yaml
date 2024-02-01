@@ -3,8 +3,8 @@ metric_best: mae
 metric_agg: argmin
 wandb:
   use: True
-  project: LRGB-Benchmark-RandomSeed-Exphormer #graph-mamba #flop_experiment_re
-  entity: tf-map
+  project: LRGB-Benchmark-RandomSeed-Exphormer
+  entity: project
 dataset:
   format: OGB
   name: peptides-structural

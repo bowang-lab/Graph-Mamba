@@ -6,7 +6,7 @@ wandb:
   entity: project
 dataset:
   format: PyG-GNNBenchmarkDataset
-  name: CLUSTER
+  name: PATTERN
   task: graph
   task_type: classification
   transductive: False
@@ -22,7 +22,7 @@ posenc_LapPE:
   eigen:
     laplacian_norm: none
     eigvec_norm: L2
-    max_freqs: 10
+    max_freqs: 16
   model: DeepSet
   dim_pe: 16
   layers: 2
@@ -30,19 +30,19 @@ posenc_LapPE:
   raw_norm_type: none
 train:
   mode: custom
-  batch_size: 16
+  batch_size: 32
   eval_period: 1
   ckpt_period: 100
 model:
   type: GPSModel
   loss_fun: weighted_cross_entropy
   edge_decoding: dot
-gt:  # Hyperparameters optimized for ~500k budget.
-  layer_type: CustomGatedGCN+Transformer
-  layers: 16
-  n_heads: 8
-  dim_hidden: 48  # `gt.dim_hidden` must match `gnn.dim_inner`
-  dropout: 0.1
+gt:  # Hyperparameters optimized for up to ~500k budget.
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise
+  layers: 6
+  n_heads: 4
+  dim_hidden: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dropout: 0.0
   attn_dropout: 0.5
   layer_norm: False
   batch_norm: True
@@ -50,7 +50,7 @@ gnn:
   head: inductive_node
   layers_pre_mp: 0
   layers_post_mp: 3
-  dim_inner: 48  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dim_inner: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
   batchnorm: True
   act: relu
   dropout: 0.0
@@ -59,8 +59,17 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 1e-5
-  base_lr: 0.0005
+  weight_decay: 0.0001
+  base_lr: 0.001
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
+seed: 0
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 1e-5
+#   base_lr: 0.0005
+#   max_epoch: 100
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 5

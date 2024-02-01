@@ -26,7 +26,7 @@ model:
   edge_decoding: dot
   graph_pooling: max
 gt:
-  layer_type: CustomGatedGCN+Transformer
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise_Bucket
   layers: 5
   n_heads: 4
   dim_hidden: 64  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -48,10 +48,11 @@ optim:
   clip_grad_norm: True
   optimizer: adamW
   weight_decay: 1e-5
-  base_lr: 0.0005
+  base_lr: 0.0015
   max_epoch: 150
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 0
 # optim:
 #   clip_grad_norm: True
 #   optimizer: adamW

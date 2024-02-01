@@ -2,7 +2,7 @@ out_dir: results
 metric_best: f1
 wandb:
   use: True
-  project: LRGB-Benchmark-RandomSeed
+  project: Graph-Mamba-Benchmark-GNN #LRGB-Benchmark-RandomSeed #flop_experiment_re
   entity: project
 dataset:
   format: PyG-COCOSuperpixels
@@ -36,7 +36,7 @@ model:
   type: GPSModel
   loss_fun: weighted_cross_entropy
 gt:
-  layer_type: CustomGatedGCN+Transformer
+  layer_type: CustomGatedGCN+Performer #Mamba_Hybrid_Degree_Noise_Bucket #Transformer  #Performer
   layers: 4
   n_heads: 8
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -54,6 +54,14 @@ gnn:
   dropout: 0.0
   agg: mean
   normalize_adj: False
+# optim:
+#   clip_grad_norm: True
+#   optimizer: adamW
+#   weight_decay: 0.0
+#   base_lr: 0.0005
+#   max_epoch: 300
+#   scheduler: cosine_with_warmup
+#   num_warmup_epochs: 10
 optim:
   clip_grad_norm: True
   optimizer: adamW
@@ -62,3 +70,4 @@ optim:
   max_epoch: 300
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 3

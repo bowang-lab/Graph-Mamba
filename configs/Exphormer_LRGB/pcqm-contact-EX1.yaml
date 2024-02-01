@@ -3,8 +3,8 @@ metric_best: mrr
 num_workers: 4
 wandb:
   use: True
-  project: Graph-Mamba-Benchmark-GNN #LRGB-Benchmark-RandomSeed-Exphormer #flop_experiment_re #pcqm4m-contact
-  entity: tf-map
+  project: Graph-Mamba-Benchmark-GNN
+  entity: project
 dataset:
   format: OGB
   name: PCQM4Mv2Contact-shuffle
