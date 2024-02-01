@@ -128,7 +128,7 @@ class GPSLayer(nn.Module):
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
         self.equivstable_pe = equivstable_pe
-        self.NUM_BUCKETS = 2
+        self.NUM_BUCKETS = 3
 
         # Local message-passing model.
         if local_gnn_type == 'None':
@@ -310,13 +310,16 @@ class GPSLayer(nn.Module):
                 h_attn = self.self_attn(h_dense, mask=mask)[mask]
             elif self.global_model_type == 'BigBird':
                 h_attn = self.self_attn(h_dense, attention_mask=mask)
+            
             elif self.global_model_type == 'Mamba':
-                h_attn = self.self_attn(h_dense)[mask]
+                h_attn = self.self_attn(h_dense)[mask]                
+
             elif self.global_model_type == 'Mamba_Permute':
                 h_ind_perm = permute_within_batch(batch.batch)
                 h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                 h_ind_perm_reverse = torch.argsort(h_ind_perm)
                 h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+            
             elif self.global_model_type == 'Mamba_Degree':
                 deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
                 # indcies that sort by batch and then deg, by ascending order
@@ -324,6 +327,7 @@ class GPSLayer(nn.Module):
                 h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                 h_ind_perm_reverse = torch.argsort(h_ind_perm)
                 h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+            
             elif self.global_model_type == 'Mamba_Hybrid':
                 if batch.split == 'train':
                     h_ind_perm = permute_within_batch(batch.batch)
@@ -406,7 +410,7 @@ class GPSLayer(nn.Module):
                         h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
-            
+                        
             elif 'Mamba_Hybrid_Degree_Noise_Bucket' == self.global_model_type:
                 if batch.split == 'train':
                     deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.float)
@@ -449,20 +453,117 @@ class GPSLayer(nn.Module):
                         mamba_arr.append(h_attn)
                     h_attn = sum(mamba_arr) / 5
 
+            elif 'Mamba_Hybrid_Noise' == self.global_model_type:
+                if batch.split == 'train':
+                    deg_noise = torch.rand_like(batch.batch.to(torch.float)).to(batch.batch.device)
+                    indices_arr, emb_arr = [],[]
+                    bucket_assign = torch.randint_like(deg_noise, 0, self.NUM_BUCKETS).to(deg_noise.device)
+                    for i in range(self.NUM_BUCKETS):
+                        ind_i = (bucket_assign==i).nonzero().squeeze()
+                        h_ind_perm_sort = lexsort([deg_noise[ind_i], batch.batch[ind_i]])
+                        h_ind_perm_i = ind_i[h_ind_perm_sort]
+                        h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                        h_dense = self.self_attn(h_dense)[mask]
+                        indices_arr.append(h_ind_perm_i)
+                        emb_arr.append(h_dense)
+                    h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                    h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    deg = batch.batch.to(torch.float)
+                    for i in range(5):
+                        deg_noise = torch.rand_like(batch.batch.to(torch.float)).to(batch.batch.device)
+                        indices_arr, emb_arr = [],[]
+                        bucket_assign = torch.randint_like(deg_noise, 0, self.NUM_BUCKETS).to(deg_noise.device)
+                        for i in range(self.NUM_BUCKETS):
+                            ind_i = (bucket_assign==i).nonzero().squeeze()
+                            h_ind_perm_sort = lexsort([deg_noise[ind_i], batch.batch[ind_i]])
+                            h_ind_perm_i = ind_i[h_ind_perm_sort]
+                            h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                            h_dense = self.self_attn(h_dense)[mask]
+                            indices_arr.append(h_ind_perm_i)
+                            emb_arr.append(h_dense)
+                        h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                        h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+            
+            elif 'Mamba_Hybrid_Noise_Bucket' == self.global_model_type:
+                if batch.split == 'train':
+                    deg_noise = torch.rand_like(batch.batch.to(torch.float)).to(batch.batch.device)
+                    h_ind_perm = lexsort([deg_noise, batch.batch])
+                    h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                    h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                    h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    deg = batch.batch.to(torch.float)
+                    for i in range(5):
+                        deg_noise = torch.rand_like(batch.batch.to(torch.float)).to(batch.batch.device)
+                        h_ind_perm = lexsort([deg_noise, batch.batch])
+                        h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                        h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+
             elif self.global_model_type == 'Mamba_Eigen':
                 deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
                 centrality = batch.EigCentrality
                 if batch.split == 'train':
                     # Shuffle within 1 STD
-                    centrality_noise = torch.std(centrality)*torch.randn(centrality.shape).to(centrality.device)
+                    centrality_noise = torch.std(centrality)*torch.rand(centrality.shape).to(centrality.device)
                     # Order by batch, degree, and centrality
-                    h_ind_perm = lexsort([centrality+centrality_noise, deg, batch.batch])
+                    h_ind_perm = lexsort([centrality+centrality_noise, batch.batch])
+                    h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                    h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                    h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                 else:
-                    h_ind_perm = lexsort([centrality, deg, batch.batch])
-                h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
-                h_ind_perm_reverse = torch.argsort(h_ind_perm)
-                h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                    mamba_arr = []
+                    for i in range(5):
+                        centrality_noise = torch.std(centrality)*torch.rand(centrality.shape).to(centrality.device)
+                        h_ind_perm = lexsort([centrality+centrality_noise, batch.batch])
+                        h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                        h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
             
+            elif 'Mamba_Eigen_Bucket' == self.global_model_type:
+                centrality = batch.EigCentrality
+                if batch.split == 'train':
+                    centrality_noise = torch.std(centrality)*torch.rand(centrality.shape).to(centrality.device)
+                    indices_arr, emb_arr = [],[]
+                    bucket_assign = torch.randint_like(centrality, 0, self.NUM_BUCKETS).to(centrality.device)
+                    for i in range(self.NUM_BUCKETS):
+                        ind_i = (bucket_assign==i).nonzero().squeeze()
+                        h_ind_perm_sort = lexsort([(centrality+centrality_noise)[ind_i], batch.batch[ind_i]])
+                        h_ind_perm_i = ind_i[h_ind_perm_sort]
+                        h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                        h_dense = self.self_attn(h_dense)[mask]
+                        indices_arr.append(h_ind_perm_i)
+                        emb_arr.append(h_dense)
+                    h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                    h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                else:
+                    mamba_arr = []
+                    for i in range(5):
+                        centrality_noise = torch.std(centrality)*torch.rand(centrality.shape).to(centrality.device)
+                        indices_arr, emb_arr = [],[]
+                        bucket_assign = torch.randint_like(centrality, 0, self.NUM_BUCKETS).to(centrality.device)
+                        for i in range(self.NUM_BUCKETS):
+                            ind_i = (bucket_assign==i).nonzero().squeeze()
+                            h_ind_perm_sort = lexsort([(centrality+centrality_noise)[ind_i], batch.batch[ind_i]])
+                            h_ind_perm_i = ind_i[h_ind_perm_sort]
+                            h_dense, mask = to_dense_batch(h[h_ind_perm_i], batch.batch[h_ind_perm_i])
+                            h_dense = self.self_attn(h_dense)[mask]
+                            indices_arr.append(h_ind_perm_i)
+                            emb_arr.append(h_dense)
+                        h_ind_perm_reverse = torch.argsort(torch.cat(indices_arr))
+                        h_attn = torch.cat(emb_arr)[h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
+
             elif self.global_model_type == 'Mamba_RWSE':
                 deg = degree(batch.edge_index[0], batch.x.shape[0]).to(torch.long)
                 RWSE_sum = torch.sum(batch.pestat_RWSE, dim=1)
@@ -472,16 +573,25 @@ class GPSLayer(nn.Module):
                     # Sort in descending order
                     # Nodes with more local connections -> larger sum in RWSE
                     # Nodes with more global connections -> smaller sum in RWSE
-                    # h_ind_perm = lexsort([RWSE_sum+RWSE_noise, batch.batch])
-                    h_ind_perm = lexsort([-RWSE_sum+RWSE_noise, deg, batch.batch])
+                    h_ind_perm = lexsort([-RWSE_sum+RWSE_noise, batch.batch])
+                    # h_ind_perm = lexsort([-RWSE_sum+RWSE_noise, deg, batch.batch])
+                    h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                    h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                    h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
                 else:
                     # Sort in descending order
                     # Nodes with more local connections -> larger sum in RWSE
                     # Nodes with more global connections -> smaller sum in RWSE
-                    h_ind_perm = lexsort([-RWSE_sum, deg, batch.batch])
-                h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
-                h_ind_perm_reverse = torch.argsort(h_ind_perm)
-                h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                    # h_ind_perm = lexsort([-RWSE_sum, deg, batch.batch])
+                    mamba_arr = []
+                    for i in range(5):
+                        RWSE_noise = torch.std(RWSE_sum)*torch.randn(RWSE_sum.shape).to(RWSE_sum.device)
+                        h_ind_perm = lexsort([-RWSE_sum+RWSE_noise, batch.batch])
+                        h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
+                        h_ind_perm_reverse = torch.argsort(h_ind_perm)
+                        h_attn = self.self_attn(h_dense)[mask][h_ind_perm_reverse]
+                        mamba_arr.append(h_attn)
+                    h_attn = sum(mamba_arr) / 5
             
             elif self.global_model_type == 'Mamba_Cluster':
                 h_ind_perm = permute_within_batch(batch.batch)
@@ -494,8 +604,8 @@ class GPSLayer(nn.Module):
                         indices = torch.nonzero(batch.LouvainCluster == i).squeeze()
                         permuted_louvain[indices] = random_permute[i]
                     #h_ind_perm_1 = lexsort([deg[h_ind_perm], permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
-                    h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], deg[h_ind_perm], batch.batch[h_ind_perm]])
-                    #h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
+                    #h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], deg[h_ind_perm], batch.batch[h_ind_perm]])
+                    h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
                     h_ind_perm = h_ind_perm[h_ind_perm_1]
                     h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                     h_ind_perm_reverse = torch.argsort(h_ind_perm)
@@ -516,8 +626,8 @@ class GPSLayer(nn.Module):
                         # potentially permute it 5 times and average
                         # on the cluster level
                         #h_ind_perm_1 = lexsort([deg[h_ind_perm], permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
-                        h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], deg[h_ind_perm], batch.batch[h_ind_perm]])
-                        #h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
+                        #h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], deg[h_ind_perm], batch.batch[h_ind_perm]])
+                        h_ind_perm_1 = lexsort([permuted_louvain[h_ind_perm], batch.batch[h_ind_perm]])
                         h_ind_perm = h_ind_perm[h_ind_perm_1]
                         h_dense, mask = to_dense_batch(h[h_ind_perm], batch.batch[h_ind_perm])
                         h_ind_perm_reverse = torch.argsort(h_ind_perm)

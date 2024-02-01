@@ -14,6 +14,34 @@ from torch_geometric.graphgym.utils.epoch import is_eval_epoch, is_ckpt_epoch
 from graphgps.loss.subtoken_prediction_loss import subtoken_cross_entropy
 from graphgps.utils import cfg_to_dict, flatten_dict, make_wandb_name
 
+from deepspeed.profiling.flops_profiler import FlopsProfiler
+#from torch.autograd import profiler
+from torch.profiler import profile, record_function, ProfilerActivity
+
+def subsample_batch_index(batch, min_k = 1, ratio = 0.1):
+    torch.manual_seed(0)
+    unique_batches = torch.unique(batch.batch)
+    # Initialize list to store permuted indices
+    permuted_indices = []
+    for batch_index in unique_batches:
+        # Extract indices for the current batch
+        indices_in_batch = (batch.batch == batch_index).nonzero().squeeze()
+        # See how many nodes in the graphs
+        # And how many left after subsetting
+        k = int(indices_in_batch.size(0)*ratio)
+        # If subsetting gives more than 1, do subsetting
+        if k > min_k:
+            perm = torch.randperm(indices_in_batch.size(0))
+            idx = perm[:k]
+            idx = indices_in_batch[idx]
+            idx, _ = torch.sort(idx)
+        # Otherwise retain entire graph
+        else:
+            idx = indices_in_batch
+        permuted_indices.append(idx)
+    idx = torch.cat(permuted_indices)
+    return idx
+
 
 def arxiv_cross_entropy(pred, true, split_idx):
     true = true.squeeze(-1)
@@ -24,14 +52,38 @@ def arxiv_cross_entropy(pred, true, split_idx):
         raise ValueError("In ogbn cross_entropy calculation dimensions did not match.")
     return loss, pred_score
 
+# @profiler.profile
+# def profile_mem_forward(model, batch):
+#     pred, true = model(batch)
+#     return pred, true
 
 def train_epoch(logger, loader, model, optimizer, scheduler, batch_accumulation):
+    # flop related
+    if_mem = False
+    if_flop = False
+    if_select = False
+    if if_flop:
+        prof = FlopsProfiler(model, None)
+        #profile_step = 0
+        total_flop_s = 0.
+        sample_count = 0
+        if if_select:
+            total_node = 0
+
     model.train()
     optimizer.zero_grad()
     time_start = time.time()
     for iter, batch in enumerate(loader):
+        if if_select:
+            ratio = 1.0
+            idx = subsample_batch_index(batch, min_k = 1, ratio = ratio)
+            batch = batch.subgraph(idx)
+        # flop related
+        if if_flop: # and iter == profile_step:
+            prof.start_profile()
         batch.split = 'train'
         batch.to(torch.device(cfg.device))
+        
         pred, true = model(batch)
         if cfg.dataset.name == 'ogbg-code2':
             loss, pred_score = subtoken_cross_entropy(pred, true)
@@ -46,6 +98,18 @@ def train_epoch(logger, loader, model, optimizer, scheduler, batch_accumulation)
             loss, pred_score = compute_loss(pred, true)
             _true = true.detach().to('cpu', non_blocking=True)
             _pred = pred_score.detach().to('cpu', non_blocking=True)
+
+        if if_flop:
+            prof.stop_profile()
+            flops = prof.get_total_flops()
+            flops_s = flops/1000000000.
+            total_flop_s+=flops_s
+            sample_count+=len(torch.unique(batch.batch))
+            params = prof.get_total_params()
+            prof.end_profile()
+            if if_select:
+                total_node += batch.x.size(0)
+
         loss.backward()
         # Parameters update after accumulating gradients for given num. batches.
         if ((iter + 1) % batch_accumulation == 0) or (iter + 1 == len(loader)):
@@ -61,6 +125,20 @@ def train_epoch(logger, loader, model, optimizer, scheduler, batch_accumulation)
                             params=cfg.params,
                             dataset_name=cfg.dataset.name)
         time_start = time.time()
+    if if_flop:
+        print('################ Print flop')
+        print(total_flop_s/sample_count, params)
+        print('################ End print flop')
+    if if_mem:
+        print('################ Print mem')
+        print(torch.cuda.max_memory_allocated() / (1024 ** 2))
+        print(torch.cuda.max_memory_reserved() / (1024 ** 2))
+        #print(prof_mem.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
+        print('################ End print mem')
+    if if_select:
+        print('################ Print avg nodes')
+        print(total_node/sample_count)
+
 
 
 @torch.no_grad()
@@ -137,6 +215,7 @@ def custom_train(loggers, loaders, model, optimizer, scheduler):
     split_names = ['val', 'test']
     full_epoch_times = []
     perf = [[] for _ in range(num_splits)]
+
     for cur_epoch in range(start_epoch, cfg.optim.max_epoch):
         start_time = time.perf_counter()
         train_epoch(loggers[0], loaders[0], model, optimizer, scheduler,

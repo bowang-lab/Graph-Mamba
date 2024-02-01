@@ -3,8 +3,8 @@ metric_best: mrr
 num_workers: 4
 wandb:
   use: True
-  project: pcqm4m-contact
-  entity: expand-gnns
+  project: Graph-Mamba-Benchmark-GNN #LRGB-Benchmark-RandomSeed-Exphormer #flop_experiment_re #pcqm4m-contact
+  entity: chloewxq #tf-map
 dataset:
   format: OGB
   name: PCQM4Mv2Contact-shuffle
@@ -65,6 +65,7 @@ optim:
   optimizer: adamW
   weight_decay: 0.0
   base_lr: 0.0003
-  max_epoch: 200
+  max_epoch: 100 #200
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 4

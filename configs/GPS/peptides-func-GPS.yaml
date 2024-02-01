@@ -2,8 +2,8 @@ out_dir: results
 metric_best: ap
 wandb:
   use: True
-  project: Peptides-Func
-  entity: tf-map
+  project: LRGB-Benchmark-RandomSeed
+  entity: chloewxq
 dataset:
   format: OGB
   name: peptides-functional
@@ -16,6 +16,7 @@ dataset:
   edge_encoder: True
   edge_encoder_name: Bond
   edge_encoder_bn: False
+  split_mode: standard
 posenc_LapPE:
   enable: True
   eigen:
@@ -36,7 +37,7 @@ model:
   loss_fun: cross_entropy
   graph_pooling: mean
 gt:
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise_Bucket
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
   dropout: 0.0
@@ -59,6 +60,7 @@ optim:
   max_epoch: 200
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 0
 #optim:
 #  optimizer: adamW
 #  weight_decay: 0.0

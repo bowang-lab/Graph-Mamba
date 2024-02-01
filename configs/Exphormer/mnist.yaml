@@ -2,7 +2,7 @@ out_dir: results
 metric_best: accuracy
 wandb:
   use: True
-  project: graph-mamba
+  project: GNN-Benchmark-RandomSeed-Exphormer #graph-mamba
   entity: tf-map
 dataset:
   format: PyG-GNNBenchmarkDataset
@@ -62,6 +62,7 @@ optim:
   optimizer: adamW
   weight_decay: 1e-5
   base_lr: 0.001
-  max_epoch: 150
+  max_epoch: 100 #150
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
+seed: 4

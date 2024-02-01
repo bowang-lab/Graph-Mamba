@@ -2,7 +2,7 @@ out_dir: results
 metric_best: f1
 wandb:
   use: True
-  project: COCO-SP
+  project: LRGB-Benchmark-RandomSeed #flop_experiment_re
   entity: tf-map
 dataset:
   format: PyG-COCOSuperpixels
@@ -36,11 +36,7 @@ model:
   type: GPSModel
   loss_fun: weighted_cross_entropy
 gt:
-<<<<<<< HEAD
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Bucket #Transformer  #Performer
-=======
-  layer_type: CustomGatedGCN+Mamba_Bucket #Transformer  #Performer
->>>>>>> 815cf5a26a1097601438fcae49ae7f288ca469fd
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise_Bucket
   layers: 4
   n_heads: 8
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -58,7 +54,6 @@ gnn:
   dropout: 0.0
   agg: mean
   normalize_adj: False
-<<<<<<< HEAD
 # optim:
 #   clip_grad_norm: True
 #   optimizer: adamW
@@ -70,17 +65,9 @@ gnn:
 optim:
     clip_grad_norm: True
     optimizer: adamW
-    weight_decay: 0.01
-    base_lr: 0.0005
+    weight_decay: 0.001
+    base_lr: 0.0015
     max_epoch: 300
     scheduler: cosine_with_warmup
     num_warmup_epochs: 10
-#optim:
-#  optimizer: adamW
-#  weight_decay: 0.0
-#  base_lr: 0.0005
-#  max_epoch: 200
-#  scheduler: reduce_on_plateau
-#  reduce_factor: 0.5
-#  schedule_patience: 10
-#  min_lr: 1e-5
+seed: 0

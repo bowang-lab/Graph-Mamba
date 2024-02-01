@@ -9,6 +9,7 @@ from torch_geometric.utils import (get_laplacian, to_scipy_sparse_matrix,
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_scatter import scatter_add
 from networkx.algorithms import community
+import networkx as nx
 
 
 def compute_posenc_stats(data, pe_types, is_undirected, cfg):
@@ -73,27 +74,30 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
             evals=evals, evects=evects,
             max_freqs=max_freqs,
             eigvec_norm=eigvec_norm)
+        #G = to_networkx(data, to_undirected=True)
+        #centrality = nx.eigenvector_centrality_numpy(G)
+        #data.EigCentrality = torch.from_numpy(np.array([centrality[node] for node in centrality])).float()
         # Add eigen centrality
-        # data.EigCentrality = torch.from_numpy(centrality).float()
+        #data.EigCentrality = torch.from_numpy(centrality).float()
         # Add louvain cluster labels
-        # G = to_networkx(data, to_undirected=True)
-        '''
-        try:
-            partition = community.greedy_modularity_communities(G)
-            node_community_assignment = [0] * len(G.nodes())
-            for i, com in enumerate(partition):
-                for node in com:
-                    node_community_assignment[list(G.nodes()).index(node)] = i
-        except:
-            louvain_communities = community.louvain_communities(G, seed=0)
-            node_cluster_mapping = {}
-            # Assign cluster identities to nodes
-            for idx, com in enumerate(louvain_communities):
-                for node in com:
-                    node_cluster_mapping[node] = idx
-            node_community_assignment = [node_cluster_mapping[node] if node in node_cluster_mapping else None for node in range(len(node_cluster_mapping))]
-        data.LouvainCluster = torch.from_numpy(np.array(node_community_assignment)).long()
-        '''
+        #G = to_networkx(data, to_undirected=True)
+        
+        # try:
+        #     partition = community.greedy_modularity_communities(G)
+        #     node_community_assignment = [0] * len(G.nodes())
+        #     for i, com in enumerate(partition):
+        #         for node in com:
+        #             node_community_assignment[list(G.nodes()).index(node)] = i
+        # except:
+        #louvain_communities = community.louvain_communities(G, seed=0)
+        #node_cluster_mapping = {}
+        # Assign cluster identities to nodes
+        #for idx, com in enumerate(louvain_communities):
+        #    for node in com:
+        #        node_cluster_mapping[node] = idx
+        #node_community_assignment = [node_cluster_mapping[node] if node in node_cluster_mapping else None for node in range(len(node_cluster_mapping))]
+        #data.LouvainCluster = torch.from_numpy(np.array(node_community_assignment)).long()
+        
     if 'SignNet' in pe_types:
         # Eigen-decomposition with numpy for SignNet.
         norm_type = cfg.posenc_SignNet.eigen.laplacian_norm.lower()

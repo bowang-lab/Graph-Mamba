@@ -2,7 +2,7 @@ out_dir: results
 metric_best: ap
 wandb:
   use: True
-  project: graph-mamba
+  project: LRGB-Benchmark-RandomSeed-Exphormer #flop_experiment_re #graph-mamba
   entity: tf-map
 dataset:
   format: OGB
@@ -66,6 +66,7 @@ optim:
   max_epoch: 200
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 4
 #optim:
 #  optimizer: adamW
 #  weight_decay: 0.0

@@ -2,8 +2,8 @@ out_dir: results
 metric_best: f1
 wandb:
   use: True
-  project: COCO
-  entity: expand-gnns
+  project: LRGB-Benchmark-RandomSeed-Exphormer #graph-mamba #flop_experiment_re
+  entity: tf-map
 dataset:
   format: PyG-COCOSuperpixels
   name: edge_wt_region_boundary
@@ -65,9 +65,10 @@ optim:
   optimizer: adamW
   weight_decay: 0.0
   base_lr: 0.0005
-  max_epoch: 300
+  max_epoch: 300 #1
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 3
 #optim:
 #  optimizer: adamW
 #  weight_decay: 0.0

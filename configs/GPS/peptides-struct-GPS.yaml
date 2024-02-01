@@ -3,7 +3,7 @@ metric_best: mae
 metric_agg: argmin
 wandb:
   use: True
-  project: Peptides-Struc
+  project: LRGB-Benchmark-RandomSeed
   entity: tf-map
 dataset:
   format: OGB
@@ -37,7 +37,7 @@ model:
   loss_fun: l1
   graph_pooling: mean
 gt:
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise #Mamba
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -61,6 +61,7 @@ optim:
   max_epoch: 200
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 0
 #optim:
 #  optimizer: adamW
 #  weight_decay: 0.0

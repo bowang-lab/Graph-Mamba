@@ -1,7 +1,7 @@
 out_dir: results
 metric_best: f1
 wandb:
-  project: PascalVOC-SP
+  project: LRGB-Benchmark-RandomSeed
   entity: tf-map
 dataset:
   format: PyG-VOCSuperpixels
@@ -56,11 +56,12 @@ gnn:
 optim:
   clip_grad_norm: True
   optimizer: adamW
-  weight_decay: 0.01
-  base_lr: 0.001
+  weight_decay: 0.001
+  base_lr: 0.0015
   max_epoch: 300
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 0
 # optim:
 #     clip_grad_norm: True
 #     optimizer: adamW
@@ -69,12 +70,3 @@ optim:
 #     max_epoch: 300
 #     scheduler: cosine_with_warmup
 #     num_warmup_epochs: 10
-#optim:
-#  optimizer: adamW
-#  weight_decay: 0.0
-#  base_lr: 0.0005
-#  max_epoch: 500
-#  scheduler: reduce_on_plateau
-#  reduce_factor: 0.5
-#  schedule_patience: 20
-#  min_lr: 1e-5

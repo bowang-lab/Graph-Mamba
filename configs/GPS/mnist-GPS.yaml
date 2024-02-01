@@ -2,8 +2,8 @@ out_dir: results
 metric_best: accuracy
 wandb:
   use: True
-  project: MNIST
-  entity: tf-map
+  project: GNN-Benchmark-RandomSeed
+  entity: chloewxq
 dataset:
   format: PyG-GNNBenchmarkDataset
   name: MNIST
@@ -37,7 +37,7 @@ model:
   edge_decoding: dot
   graph_pooling: mean
 gt:  # Hyperparameters optimized for ~100k budget.
-  layer_type: CustomGatedGCN+Mamba_Cluster #Hybrid_Degree #+Mamba #Transformer
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise
   layers: 3
   n_heads: 4
   dim_hidden: 52  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -59,10 +59,11 @@ optim:
   clip_grad_norm: True
   optimizer: adamW
   weight_decay: 0.01
-  base_lr: 0.003
+  base_lr: 0.005
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
+seed: 0
 # optim:
 #   clip_grad_norm: True
 #   optimizer: adamW

@@ -3,8 +3,8 @@ metric_best: mrr
 num_workers: 4
 wandb:
   use: True
-  project: PCQM-Contact
-  entity: tf-map
+  project: LRGB-Benchmark-RandomSeed
+  entity: chloewxq
 dataset:
   format: OGB
   name: PCQM4Mv2Contact-shuffle
@@ -38,7 +38,7 @@ model:
   loss_fun: cross_entropy
   edge_decoding: dot
 gt:
-  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree #Mamba
+  layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise #Mamba_Hybrid_Degree_Noise #Mamba
   layers: 4
   n_heads: 4
   dim_hidden: 96  # `gt.dim_hidden` must match `gnn.dim_inner`
@@ -58,10 +58,11 @@ optim:
   clip_grad_norm: True
   optimizer: adamW
   weight_decay: 0.01
-  base_lr: 0.001
+  base_lr: 0.002
   max_epoch: 100
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 0
 # optim:
 #   clip_grad_norm: True
 #   optimizer: adamW

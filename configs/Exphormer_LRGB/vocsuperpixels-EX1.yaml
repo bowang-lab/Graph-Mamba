@@ -2,8 +2,8 @@ out_dir: results
 metric_best: f1
 wandb:
   use: True
-  project: Pascal
-  entity: expand-gnns
+  project: LRGB-Benchmark-RandomSeed-Exphormer #graph-mamba #flop_experiment_re
+  entity: tf-map
 dataset:
   format: PyG-VOCSuperpixels
   name: edge_wt_region_boundary
@@ -67,6 +67,7 @@ optim:
   max_epoch: 300
   scheduler: cosine_with_warmup
   num_warmup_epochs: 10
+seed: 3
 #optim:
 #  optimizer: adamW
 #  weight_decay: 0.0
