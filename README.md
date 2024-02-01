@@ -25,7 +25,7 @@ To troubleshoot Mamba installation, please refer to https://github.com/state-spa
 conda activate graph-mamba
 
 # Running Graph-Mamba for Peptides-func dataset
-python main.py --cfg configs/GPS/peptides-func-GPS.yaml  wandb.use False
+python main.py --cfg configs/Mamba/peptides-func-EX.yaml  wandb.use False
 ```
 You can also set your wandb settings and use wandb.
 
@@ -35,8 +35,8 @@ Most of the configs are shared with [GraphGPS](https://github.com/rampasek/Graph
 ```
 gt:
   layer_type: CustomGatedGCN+Mamba_Hybrid_Degree_Noise
-  # CustomGatedGCN+Mamba_Hybrid_Degree_Noise_Bucket - For large graph datasets that use the bucketing technique
   # Refer to graphgps/layer/gps_layer.py for NUM_BUCKETS
+  # CustomGatedGCN+Mamba_Hybrid_Degree_Noise_Bucket - For large graph datasets that use the bucketing technique
   # CustomGatedGCN+Mamba_Hybrid_Noise - For permutation-only Graph-Mamba
   # CustomGatedGCN+Mamba - For baseline Mamba without Graph-Mamba adaptations
 ```
