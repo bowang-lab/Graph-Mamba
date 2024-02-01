@@ -1,0 +1,29 @@
+Step 1: poetry install
+# module load anaconda/3.9
+# module load python/3.9
+which python
+poetry env use /pkgs/python-3.9.10/bin/python
+poetry install
+
+Step 2: reinstall torch_geometric
+# In ipython, see if you can import torch_geometric. If seg dump, uninstall and reinstall
+pip uninstall torch_geometric
+pip install torch_geometric==2.0.4
+pip install --no-index pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-1.13.0+cu117.html
+# Use this line to build from source, but will likely take a while
+# pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-1.13.0+cu117.html
+
+Step 3: install rest of the packages
+pip install openbabel-wheel
+pip install fsspec 
+pip install rdkit
+pip install pytorch-lightning yacs
+pip install performer-pytorch
+pip install tensorboardX
+pip install ogb
+pip install wandb
+
+Step 4: install Mamba
+# module load cuda-11.8
+pip install causal-conv1d==1.0.2
+pip install mamba-ssm
