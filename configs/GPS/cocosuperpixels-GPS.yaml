@@ -3,7 +3,7 @@ metric_best: f1
 wandb:
   use: True
   project: LRGB-Benchmark-RandomSeed #flop_experiment_re
-  entity: tf-map
+  entity: project
 dataset:
   format: PyG-COCOSuperpixels
   name: edge_wt_region_boundary

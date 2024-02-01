@@ -4,7 +4,7 @@ metric_agg: argmin
 wandb:
   use: True
   project: LRGB-Benchmark-RandomSeed
-  entity: tf-map
+  entity: project
 dataset:
   format: OGB
   name: peptides-structural

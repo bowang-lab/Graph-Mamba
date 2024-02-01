@@ -2,7 +2,7 @@ out_dir: results
 metric_best: f1
 wandb:
   project: LRGB-Benchmark-RandomSeed
-  entity: tf-map
+  entity: project
 dataset:
   format: PyG-VOCSuperpixels
   name: edge_wt_region_boundary

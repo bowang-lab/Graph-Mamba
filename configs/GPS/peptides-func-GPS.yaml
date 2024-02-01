@@ -3,7 +3,7 @@ metric_best: ap
 wandb:
   use: True
   project: LRGB-Benchmark-RandomSeed
-  entity: chloewxq
+  entity: project
 dataset:
   format: OGB
   name: peptides-functional
