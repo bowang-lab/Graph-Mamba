@@ -4,7 +4,7 @@ num_workers: 4
 wandb:
   use: True
   project: Graph-Mamba-Benchmark-GNN #LRGB-Benchmark-RandomSeed-Exphormer #flop_experiment_re #pcqm4m-contact
-  entity: chloewxq #tf-map
+  entity: tf-map
 dataset:
   format: OGB
   name: PCQM4Mv2Contact-shuffle
