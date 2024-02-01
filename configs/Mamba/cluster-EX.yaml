@@ -65,11 +65,3 @@ optim:
   scheduler: cosine_with_warmup
   num_warmup_epochs: 5
 seed: 0
-# optim:
-#   clip_grad_norm: True
-#   optimizer: adamW
-#   weight_decay: 1e-5
-#   base_lr: 0.0005
-#   max_epoch: 100
-#   scheduler: cosine_with_warmup
-#   num_warmup_epochs: 5
