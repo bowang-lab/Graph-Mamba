@@ -20,6 +20,8 @@ conda clean --all
 ```
 To troubleshoot Mamba installation, please refer to https://github.com/state-spaces/mamba.
 
+For alternative installation via poetry, refer to poetry_steps.txt.
+
 ### Running Graph-Mamba
 ```bash
 conda activate graph-mamba
