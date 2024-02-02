@@ -43,7 +43,7 @@ gt:
   # CustomGatedGCN+Mamba - For baseline Mamba without Graph-Mamba adaptations
 ```
 
-### Paper and Citation
+### Preprint and Citation
 Our [preprint](https://arxiv.org/abs/2402.00789) is avaible on arXiv with the following citation:
 ```
 @article{Graph-Mamba,
