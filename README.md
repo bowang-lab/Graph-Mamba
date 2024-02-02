@@ -42,3 +42,16 @@ gt:
   # CustomGatedGCN+Mamba_Hybrid_Noise - For permutation-only Graph-Mamba
   # CustomGatedGCN+Mamba - For baseline Mamba without Graph-Mamba adaptations
 ```
+
+### Paper and Citation
+Our [preprint](https://arxiv.org/abs/2402.00789) is avaible on arXiv with the following citation:
+```
+@article{Graph-Mamba,
+Author = {Chloe Wang and Oleksii Tsepa and Jun Ma and Bo Wang},
+Title = {Graph-Mamba: Towards Long-Range Graph Sequence Modeling with Selective State Spaces},
+Year = {2024},
+journal={arXiv preprint arXiv:2402.00789},
+}
+```
+
+
